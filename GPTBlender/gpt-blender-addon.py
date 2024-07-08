@@ -32,26 +32,35 @@ class GPTBlender_Operator(bpy.types.Operator):
     bl_label = "Generative AI Operator"
     
     def __init__(self):
-        self.user_input = ""
-        self.context = """
-            Context: You're an assistant to help user with writing Python script in Blender.
-            Your job is to generate a Blender-compatible Python snippet that is aligned 
-            with user's intents. Your response should contain only Python code without any 
-            further textual specifications. Ignore any query unrelated to Blender in which case
-            you should return the message "Error".
-            User's prompt:             
-        """
-        self.history = ""
         self.client = Client()
-    
-    def execute(self, context): 
-        self.user_input = bpy.context.scene.GPTBlender_prop.prompt
-        prompt = self.context + self.user_input
+        self.history = []
+
+    def execute(self, context):
+        user_input = context.scene.GPTBlender_prop.prompt
+        new_prompt = {"role": "user", "content": user_input}
+        result = self.generate_response(self.history, new_prompt)
+        print(result)
+        return {'FINISHED'}
+
+    def generate_response(self, history, new_prompt):
+        messages = [
+            {"role": "system", "content": """You're an assistant in English to help user with writing full Blender program in Python.
+            . Your response should contain only Python code without any 
+            further textual specifications. Ignore any query unrelated to Blender in which case
+            you should return the message "Error"."""},
+        ]
+        messages += history
+        messages.append(new_prompt)
+        
         response = self.client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
+            model="gpt-3.5-long",
+            messages=messages
         )
-        print(response.choices[0].message.content)
+        
+        history.append(new_prompt)
+        history.append({"role": "assistant", "content": response.choices[0].message.content})
+        
+        return response.choices[0].message.content
         
 
 class GPTBlender_Panel(bpy.types.Panel):
