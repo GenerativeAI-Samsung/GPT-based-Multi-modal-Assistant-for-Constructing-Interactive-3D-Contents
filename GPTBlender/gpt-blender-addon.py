@@ -11,13 +11,14 @@ bl_info = {
 }
 
 import bpy
-from bpy.props import StringProperty, PointerProperty
+from bpy.props import StringProperty, PointerProperty, CollectionProperty
 from bpy.types import Panel, Operator, PropertyGroup
 from bpy.utils import register_class, unregister_class
-
 from g4f.client import Client
 
-
+class GPTBlender_HistoryEntry(PropertyGroup):
+    role: StringProperty(name="Role")
+    content: StringProperty(name="Content")
 
 class GPTBlender_Properties(PropertyGroup):
     prompt: StringProperty(
@@ -26,30 +27,27 @@ class GPTBlender_Properties(PropertyGroup):
         default="",
         maxlen=4096,
     )
-    
+    history: CollectionProperty(type=GPTBlender_HistoryEntry)
+
 class GPTBlender_Operator(bpy.types.Operator):
     bl_idname = "genai.1"
     bl_label = "Generative AI Operator"
     
     def __init__(self):
         self.client = Client()
-        self.history = []
 
     def execute(self, context):
         user_input = context.scene.GPTBlender_prop.prompt
         new_prompt = {"role": "user", "content": user_input}
-        result = self.generate_response(self.history, new_prompt)
+        result = self.generate_response(context.scene.GPTBlender_prop.history, new_prompt)
         print(result)
         return {'FINISHED'}
 
     def generate_response(self, history, new_prompt):
         messages = [
-            {"role": "system", "content": """You're an assistant in English to help user with writing full Blender program in Python.
-            . Your response should contain only Python code without any 
-            further textual specifications. Ignore any query unrelated to Blender in which case
-            you should return the message "Error"."""},
+            {"role": "system", "content": "You're an assistant in only English."},
         ]
-        messages += history
+        messages.extend([{"role": entry.role, "content": entry.content} for entry in history])
         messages.append(new_prompt)
         
         response = self.client.chat.completions.create(
@@ -57,20 +55,32 @@ class GPTBlender_Operator(bpy.types.Operator):
             messages=messages
         )
         
-        history.append(new_prompt)
-        history.append({"role": "assistant", "content": response.choices[0].message.content})
+        response_content = response.choices[0].message.content
+
+        user_entry = history.add()
+        user_entry.role = "user"
+        user_entry.content = new_prompt['content']
+
+        assistant_entry = history.add()
+        assistant_entry.role = "assistant"
+        assistant_entry.content = response_content
         
-        return response.choices[0].message.content
-        
+        return response_content
+
+class GPTBlender_ClearHistoryOperator(bpy.types.Operator):
+    bl_idname = "genai.clear_history"
+    bl_label = "Clear History Operator"
+
+    def execute(self, context):
+        context.scene.GPTBlender_prop.history.clear()
+        print("Chat history cleared.")
+        return {'FINISHED'}        
 
 class GPTBlender_Panel(bpy.types.Panel):
     bl_label = "GPT Blender Panel"
     bl_idname = "OBJECT_PT_GPTBlender"
-    # Define the area
     bl_space_type = "VIEW_3D"
-    # Define the location of the panel
     bl_region_type = "UI"
-    # Addon's name on the panel
     bl_category = "GPT Blender"
     
     def draw(self, context):
@@ -78,15 +88,17 @@ class GPTBlender_Panel(bpy.types.Panel):
         scene = context.scene
         
         GPTBlenderProp = scene.GPTBlender_prop
-        # Text field
         layout.prop(GPTBlenderProp, "prompt")
-        # Generate button
         row = layout.row()
         row.operator(GPTBlender_Operator.bl_idname, text="Generate", icon='SHADERFX')
+        row = layout.row()
+        row.operator(GPTBlender_ClearHistoryOperator.bl_idname, text="Clear History", icon='X')
 
 _classes = [
+    GPTBlender_HistoryEntry,
     GPTBlender_Properties,
     GPTBlender_Operator,
+    GPTBlender_ClearHistoryOperator,
     GPTBlender_Panel
 ]
 
@@ -94,11 +106,11 @@ def register():
     for cls in _classes:
         register_class(cls)
     bpy.types.Scene.GPTBlender_prop = PointerProperty(type=GPTBlender_Properties)
-    
+
 def unregister():
     for cls in _classes:
         unregister_class(cls)
     del bpy.types.Scene.GPTBlender_prop
-    
+
 if __name__ == "__main__":
     register()
