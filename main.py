@@ -16,7 +16,7 @@ class Layout:
     orientation: Tuple[float, float, float] # Euler angles (pitch, yaw, roll)
     imported_object: bpy.types.Object # Object
 
-def scale_group(objects: List[bpy.types.Object], scale_factor: float) -> None:
+def scale_group(score: List[float], objects: List[bpy.types.Object], scale_factor: float) -> None:
     """
     Scale a group of objects by a given factor.
 
@@ -28,10 +28,12 @@ def scale_group(objects: List[bpy.types.Object], scale_factor: float) -> None:
     scale_group([object1, object2], 1.5)
     """
     for obj in objects:
-        obj.scale = (obj.scale.x * scale_factor,
-                    obj.scale.y * scale_factor,
-                    obj.scale.z * scale_factor)
-        obj.matrix_world = obj.matrix_world * scale_factor
+        obj.imported_object.scale = (float(obj.imported_object.scale.x) * float(scale_factor),
+                    float(obj.imported_object.scale.y) * float(scale_factor),
+                    float(obj.imported_object.scale.z) * float(scale_factor))
+        obj.imported_object.matrix_world = obj.imported_object.matrix_world * float(scale_factor)
+    score[0] = 0
+    return score[0]
 
 def find_highest_vertex_point(objs: List[bpy.types.Object]) -> Dict[str, float]:
     """
@@ -186,24 +188,34 @@ def check_vertex_overlap(vertices1: Set[Vector], vertices2: Set[Vector], thresho
 def evaluate_constraints(assets, constraints):
     """Evaluate all constraints and return the overall score."""
     total_score = 0
+    score = [0]
+
     for constraint_func, param in constraints:
         func = f"{constraint_func}("
         for param_key in param:
             if param_key == "object1" or param_key == "object2":
                 func = func + param_key + "=" + f'assets["{param[param_key]}"]' + ", "
+                print(func)
             elif param_key == "objects" or param_key == "assets":
                 func = func + param_key + "=" + "["
                 for obj_name in param[param_key]:
                     func += f'assets["{obj_name}"]' + ", "
                 func += "]"
+                func += ","
             else:
-                func += param_key + "=" + param[param_key]
+                if (param_key == "center"):
+                    func += param_key + "=" + f'{param[param_key]}'
+                else: 
+                    func += param_key + "=" + f'"{param[param_key]}"'
+                func += ", "
+        func += "score=score"
         func += ")"
+
         print(func)
-        score = exec(func)
-        print(score)
+        exec(func)
+        print(f"score = {score[0]}")
         
-        total_score += score # Summing scores 
+        total_score += score[0] # Summing scores 
     return total_score
 
 def adjust_positions(assets, adjustment_step=1):
@@ -283,7 +295,7 @@ def calculate_distance(location1: Tuple[float, float, float], location2: Tuple[f
     """Calculate the Euclidean distance between two points."""
     return np.linalg.norm(np.array(location1) - np.array(location2))
 
-def proximity_score(object1: Layout, object2: Layout, min_distance: float = 1.0, max_distance: float = 5.0) -> float:
+def proximity_score(object1: Layout, object2: Layout, score: List[float], min_distance: float = 1.0, max_distance: float = 5.0) -> float:
     """
     Calculates a proximity score indicating how close two objects are, with 1 being very close and 0 being far apart.
 
@@ -299,12 +311,12 @@ def proximity_score(object1: Layout, object2: Layout, min_distance: float = 1.0,
     distance = calculate_distance(object1.location, object2.location)
     print(f"distance: {distance}")
     if distance <= min_distance:
-        return 1.0
+        score[0] =  1.0
     elif distance >= max_distance:
-        return 0.0
+        score[0] = 0.0
     else:
         # Linearly interpolate the score based on the distance
-        return 1 - (distance - min_distance) / (max_distance - min_distance)
+        score[0] = 1 - (distance - min_distance) / (max_distance - min_distance)
 
 def euler_to_forward_vector(orientation: Tuple[float, float, float]) -> np.ndarray:
     """Convert Euler angles to a forward direction vector."""
@@ -323,7 +335,7 @@ def calculate_vector(a: Tuple[float, float, float], b: Tuple[float, float, float
     """Calculate the directional vector from point a to b."""
     return np.array(b) - np.array(a)
 
-def direction_score(object1: Layout, object2: Layout) -> float:
+def direction_score(score: List[float], object1: Layout, object2: Layout) -> float:
     """
     Calculates a score indicating how directly object1 is targeting object2.
 
@@ -345,10 +357,10 @@ def direction_score(object1: Layout, object2: Layout) -> float:
     cos_angle = np.dot(forward_vector_normalized, target_vector_normalized)
 
     # Map the cosine range [-1, 1] to a score range [0, 1]
-    score = (cos_angle + 1) / 2
-    return score
+    score[0] = (cos_angle + 1) / 2
+    return score[0]
 
-def alignment_score(assets: List[Layout], axis: str) -> float:
+def alignment_score(score: List[float], assets: List[Layout], axis: str) -> float:
     """
     Calculates an alignment score for a list of assets along a specified axis.
     Args:
@@ -358,7 +370,8 @@ def alignment_score(assets: List[Layout], axis: str) -> float:
     float: A score between 0 and 1 indicating the degree of alignment along the specified axis.
     """
     if not assets or axis not in ['x', 'y', 'z']:
-        return 0.0 # Return a score of 0 for invalid input
+        score[0] = 0
+        return score[0] # Return a score of 0 for invalid input
 
     # Axis index mapping to the location tuple
     axis_index = {'x': 0, 'y': 1, 'z': 2}[axis]
@@ -370,12 +383,12 @@ def alignment_score(assets: List[Layout], axis: str) -> float:
     # Inverse the variance to calculate the score, assuming a lower variance indicates better alignment
     # Normalize the score to be between 0 and 1, considering a reasonable threshold for "perfect" alignment
     threshold_variance = 1.0 # Define a threshold variance for "perfect" alignment
-    score = 1 / (1 + variance / threshold_variance)
+    score[0] = 1 / (1 + variance / threshold_variance)
     # Clamp the score between 0 and 1
-    score = max(0, min(score, 1))
-    return score
+    score[0] = max(0, min(score[0], 1))
+    return score[0]
 
-def symmetry_score(assets: List[Layout], axis: str) -> float:
+def symmetry_score(score: List[float], assets: List[Layout], axis: str) -> float:
     """
     Calculates a symmetry score for a list of assets along a specified axis.
 
@@ -387,7 +400,9 @@ def symmetry_score(assets: List[Layout], axis: str) -> float:
     float: A score between 0 and 1 indicating the degree of symmetry along the specified axis.
     """
     if not assets or axis not in ['x', 'y', 'z']:
-        return 0.0 # Return a score of 0 for invalid input
+        score[0] = 0
+        return score[0] # Return a score of 0 for invalid input
+    
     # Axis index mapping to the location tuple
     axis_index = {'x': 0, 'y': 1, 'z': 2}[axis]
 
@@ -410,9 +425,9 @@ def symmetry_score(assets: List[Layout], axis: str) -> float:
     # Convert the average deviation to a score, assuming smaller deviations indicate better symmetry
     # The scoring formula can be adjusted based on the specific requirements for symmetry in the application
     max_deviation = 10.0 # Define a maximum deviation for which the score would be 0
-    score = max(0, 1 - avg_deviation / max_deviation)
+    score[0] = max(0, 1 - avg_deviation / max_deviation)
 
-    return score
+    return score[0]
 
 def perpendicularity_score(object1: Layout, object2: Layout) -> float:
     """
@@ -469,7 +484,7 @@ def calculate_angle_from_center(center: Tuple[float, float, float], object_locat
     angle = np.arctan2(vector[1], vector[0])
     return angle
 
-def rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float, float]) -> float:
+def rotation_uniformity_score(score: List[float], objects: List[Layout], center: Tuple[float, float, float]) -> float:
     """
     Calculates how uniformly objects are distributed around a central point in terms of rotation.
     
@@ -488,9 +503,9 @@ def rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float,
 
     # Evaluate uniformity as the variance of these differences
     variance = np.var(angle_diffs)
-    uniformity_score = 1 / (1 + variance) # Inverse variance, higher score for lower variance
+    score[0] = 1 / (1 + variance) # Inverse variance, higher score for lower variance
     
-    return uniformity_score
+    return score[0]
 
 def get_all_vertices(objects):
     # Assuming obj_dict[moving_set_name] and obj_dict[target_set_name] are lists of bpy.types.Object
@@ -663,6 +678,8 @@ class Movement():
     def move(self, current_frame):
         if (current_frame >= self.frame_start) and (current_frame <= self.frame_end):    
             trajectory, param = self.trajectory
+            print(trajectory)
+            print(param)
 
             # Current location
             x = self.object.imported_object.location[0]
@@ -676,13 +693,18 @@ class Movement():
             step = current_frame - self.frame_start + 1 
 
             # Set the new location
-            self.object.imported_object.location = trajectory(x=x, 
-                                                              y=y, 
-                                                              z=z, 
+            if (trajectory == "circle"):
+                self.object.imported_object.location = circle(location = [x, y, z], 
                                                               step=step,
                                                               number_step=number_step, 
                                                               speed=self.speed,
                                                               **param)
+            elif (trajectory == "straight"):
+                self.object.imported_object.location = straight(location = [x, y, z],
+                                                step=step,
+                                                number_step=number_step, 
+                                                speed=self.speed,
+                                                **param)
 
             # Insert keyframe for the new location
             self.object.imported_object.keyframe_insert(data_path="location", frame=current_frame)
