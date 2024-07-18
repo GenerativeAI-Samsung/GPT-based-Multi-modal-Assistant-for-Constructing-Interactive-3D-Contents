@@ -13,7 +13,7 @@ if __name__ == '__main__':
     input = 'Create 3D scene for this text: "A girl plays with her dog in the garden"'
 
     # External Text Resource
-    external_text = """
+    external_texts = """
 The circular path that wraps around the lawn can be used for cycling around, running, and for the adults, walking around to admire the garden.
 A sandpit or blowup plunge pool could be placed on the patio, a swing ball (if those still exist) or mini-trampoline on the lawn and suddenly the nicely designed adult garden is as welcoming for children as it is for adults without it having to look like a children's playground.
 Dens can be made from cardboard boxes joined together, old chairs and tarpaulins and whatever else you've got stuffed away unused in the garage!
@@ -21,23 +21,25 @@ Make sure you put tough plants around lawn areas which can take having balls and
 """
 
     # External Image Resource 
-    images = ["Image1.jpeg",
-              "Image2.jpeg",
-              "Image3.jpeg"]
-    
-    images_discription = ["The garden should look like this",
-                          "I want the girl character look like this",
-                          "And the dog should look like this"] 
+    external_images = [{"image_path": "Image1.jpeg", 
+               "image_description": "The garden should look like this",
+               "image_questions": None},
+              {"image_path": "Image2.jpeg", 
+               "image_description": "I want the girl character look like this",
+               "image_questions": None},
+              {"image_path": "Image3.jpeg", 
+               "image_description": "And the dog should look like this",
+               "image_questions": None}] 
 # -----------------------------------------------------------------------------
 
 # Đối với External Text Resource, trựa tiếp đưa vào list các documents_augement
-    documents_augement = [external_text]
+    documents_augement = [external_texts]
     
 # Đối với External Image Resource, mô hình ngôn ngữ chính sẽ đặt một số các câu hỏi liên quan đến các hình ảnh dựa vào: User query, Images_discription
 
     # Prompt để mô hình ngôn ngữ chính đặt câu hỏi
-    for i, image_discription in enumerate(images_discription):
-        question_query = f"""
+    for i, image in enumerate(external_images):
+        prompt = f"""
 You are an assistant that helps answer user requests.
 The user provides you with some pictures, and you have to respond to their request based on those pictures.
 However, you do not have direct access to the pictures. The only way to approach them is by asking questions related to the pictures to gather the necessary information.
@@ -45,16 +47,16 @@ Your task is to create questions based on the user's request and the description
 
 Request: "{input}"
 
-Description: "{image_discription}"
+Description: "{image["image_description"]}"
 
 After getting the answers, format them as follows:
-questions{i + 1} = [question1, question2, ...]
+external_images[{i}]["image_questions"] = [question1, question2, ...]
 
 Avoid using normal text; format your response strictly as specified above.
 """
-
+        
     question1s = """
-questions1 = [
+external_images[0]["image_questions"] = [
     "What are the main features of the garden in the picture? (e.g., flowers, trees, lawn, etc.)",
     "What type of dog is in the picture? (e.g., breed, size, color)",
     "What is the girl wearing in the picture? (e.g., dress, shorts, color, style)",
@@ -69,7 +71,7 @@ questions1 = [
 """
 
     question2s = """
-questions2 = [
+external_images[1]["image_questions"] = [
     "What is the girl wearing in the picture? (e.g., dress, shorts, color, style)",
     "What is the hairstyle of the girl in the picture? (e.g., long, short, braided, color)",
     "What is the girl's physical appearance in the picture? (e.g., height, build, facial features)",
@@ -84,7 +86,7 @@ questions2 = [
 """
 
     question3s = """
-questions3 = [
+external_images[2]["image_questions"] = [
     "What breed is the dog in the picture?",
     "What is the size of the dog in the picture? (e.g., small, medium, large)",
     "What is the color and pattern of the dog's fur in the picture?",
@@ -97,25 +99,31 @@ questions3 = [
     "Is the dog interacting with any objects or characters in the picture? (e.g., toys, the girl, other animals)"
 ]
 """
-    for i, _ in enumerate(images_discription):
-        exec(f"exec(questions{i + 1})")
+    exec(question1s)
+    exec(question2s)
+    exec(question3s)
 
     # Các câu hỏi vừa xong tiếp đến sẽ được mô hình Vision_LM trả lời
-    
-    
     Vision_LM = VisionLangugeModel()
 
-    for image in images:
-        for question in questions:
+    for i, image in enumerate(external_images):
+        for question in image["image_questions"]:
+            # Prompt cho mô hình Vision Language trả lời, dựa vào: Hình ảnh, Image description, Image Question
+            prompt = f"""
+Based on the image and the description of the picture below, please answer the following questions related to the image
+Description of the image: {image["image_description"]}
+Question: {image["image_questions"]}
+"""
             respone = Vision_LM.process(image_path=image, query=question)
             documents_augement.append(respone)
+            print(respone)
     
 
-    # Initialize embedding database
-    RAG_module = RAG_module
-    for document in documents_augement:
-        RAG_module.initalize_embedding_database(text=document)
+    # # Initialize embedding database
+    # RAG_module = RAG_module
+    # for document in documents_augement:
+    #     RAG_module.initalize_embedding_database(text=document)
     
 
-    output_RAG = RAG_module.find_top_k_embedding(query=query, k=10)
+    # output_RAG = RAG_module.find_top_k_embedding(query=query, k=10)
 
