@@ -28,6 +28,12 @@ class GPTBlender_Properties(PropertyGroup):
         maxlen=4096,
     )
     history: CollectionProperty(type=GPTBlender_HistoryEntry)
+    
+    full_response: StringProperty(
+        name="Full Response",
+        description="All responses concatenated",
+        default="",
+    )
 
 class GPTBlender_Operator(bpy.types.Operator):
     bl_idname = "genai.1"
@@ -41,17 +47,42 @@ class GPTBlender_Operator(bpy.types.Operator):
         new_prompt = {"role": "user", "content": user_input}
         result = self.generate_response(context.scene.GPTBlender_prop.history, new_prompt)
         print(result)
+        
+        context.scene.GPTBlender_prop.full_response += result + "\n"
+        
+        print(self.code_check(context.scene.GPTBlender_prop.full_response))
+        
         return {'FINISHED'}
+    
+    def code_check(self, full_response):
+        messages = [
+            {"role": "system", "content": "You're an assistant expert in Blender code. Check the code and give me a correct program."},
+            {"role": "user", "content": full_response},
+        ]
+        
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo-16k",
+            messages=messages
+        )
+        correct_program = response.choices[0].message.content
+        
+        return correct_program
+    
+    def handle_response(self, response_content):
+        try:
+            exec(response_content)
+        except Exception as e:
+            self.report({'ERROR'}, f"Execution error: {e}")
 
     def generate_response(self, history, new_prompt):
         messages = [
-            {"role": "system", "content": "You're an assistant in only English."},
+            {"role": "system", "content": "You're an assistant to help in Blender code. Your job is help user writting a full Blender program in Python"},
         ]
         messages.extend([{"role": entry.role, "content": entry.content} for entry in history])
         messages.append(new_prompt)
         
         response = self.client.chat.completions.create(
-            model="gpt-3.5-long",
+            model="gpt-3.5-turbo-16k",
             messages=messages
         )
         
@@ -66,6 +97,7 @@ class GPTBlender_Operator(bpy.types.Operator):
         assistant_entry.content = response_content
         
         return response_content
+    
 
 class GPTBlender_ClearHistoryOperator(bpy.types.Operator):
     bl_idname = "genai.clear_history"
