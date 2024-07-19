@@ -1,5 +1,6 @@
 from RAG import RAG_module
 from LanguageModel import VisionLangugeModel
+import json
 
 if __name__ == '__main__':
 
@@ -21,15 +22,18 @@ Make sure you put tough plants around lawn areas which can take having balls and
 """
 
     # External Image Resource 
-    external_images = [{"image_path": "Image1.jpeg", 
+    external_images = [{"image_path": "/content/Image1.jpg", 
                "image_description": "The garden should look like this",
-               "image_questions": None},
-              {"image_path": "Image2.jpeg", 
+               "image_questions": None,
+               "questions_response": None},
+              {"image_path": "/content/Image2.jpg", 
                "image_description": "I want the girl character look like this",
-               "image_questions": None},
-              {"image_path": "Image3.jpeg", 
+               "image_questions": None,
+               "questions_response": None},
+              {"image_path": "/content/Image3.jpeg", 
                "image_description": "And the dog should look like this",
-               "image_questions": None}] 
+               "image_questions": None,
+               "questions_response": None}] 
 # -----------------------------------------------------------------------------
 
 # Đối với External Text Resource, trựa tiếp đưa vào list các documents_augement
@@ -112,18 +116,66 @@ external_images[2]["image_questions"] = [
             prompt = f"""
 Based on the image and the description of the picture below, please answer the following questions related to the image
 Description of the image: {image["image_description"]}
-Question: {image["image_questions"]}
+Question: {question}
 """
-            respone = Vision_LM.process(image_path=image, query=question)
-            documents_augement.append(respone)
+            respone = Vision_LM.process(image_path=image["image_path"],query=prompt)
             print(respone)
-    
 
-    # # Initialize embedding database
-    # RAG_module = RAG_module
-    # for document in documents_augement:
-    #     RAG_module.initalize_embedding_database(text=document)
-    
+    external_images[0]["questions_response"] = [
+    "Several plants and flowers are growing in a garden. The garden has a green lawn, red brick path, and a wooden fence. There are also many colorful pots and flowers in the garden.",
+    "We have several pictures, so I cannot see or describe each dog.",
+    "She is wearing a dress and a pair of high heels.",
+    "The overall color palette of the garden is green and colorful. The green lawn is dotted with colorful flowers, including pink, purple, and yellow flowers.",
+    "The garden has some notable elements, including several different pots with plants in various sizes and positions, a water feature, and a bench where one could sit and enjoy the view.",
+    "It appears to be a sunny afternoon because there is direct sunlight shining on the plants.",
+    "Sunlight falls on the garden from the top, casting shadows on the grass and plants.",
+    "The general layout of the garden in the image includes a mixture of open space, flower beds, and pathways. There are four planter boxes containing different plants, and some bushes and trees also contribute to the green scenery.",
+    "No",
+    "The fence on the left.",
+    ]
 
-    # output_RAG = RAG_module.find_top_k_embedding(query=query, k=10)
+    external_images[1]["questions_response"] = [
+    "The girl is wearing a yellow sweater.",
+    "The girl has her hair in a low ponytail.",
+    "A young blonde girl with blue eyes is standing with a big smile. She has a plaid sweater on, a white cardigan sweater over it, and a white shirt underneath. She has a pink headband on and is standing in front of a fireplace.",
+    "The girl in the picture appears to be young, and although it is difficult to pinpoint an exact age, she could be a little girl or a pre-teen.",
+    "No",
+    "The girl is posing for the picture.",
+    "The girl's clothing in the picture is mostly bright and colorful.",
+    "Yes",
+    "The girl has a smile and a smiley face on her t-shirt and is smiling brightly at the camera.",
+    "No"
+    ]
+
+    external_images[2]["questions_response"] = [
+    "The dog in the picture is an Australian Shepherd.",
+    "The dog in the picture is medium-sized.",
+    "The dog has a black, tan, and white coat with a brown or reddish-brown tip on its muzzle.",
+    "The dog is walking and is not on a leash.",
+    "Yes, the dog has a red dog bandana on its neck.",
+    "The dog in the picture is of medium build, with a brown, black, and white coat and a long tail. Its ears are long and floppy, and it has a happy expression on its face with its mouth slightly open and teeth showing. The dog is standing on the lush green grass, with its tail wagging at the end of its tail, showing its relaxed and content demeanor.",
+    "Yes",
+    "Yes, the dog in the picture has some distinguishing features: it has brown, black, and white fur; its tongue is hanging out in a smile-like shape; its face has a unique coloration; and its hair is long.",
+    "The dog's fur appears to be well-groomed, with some curly elements and an overall neat and tidy appearance.",
+    "No, the dog in the image is not interacting with any objects or characters such as toys or the girl. The dog is just standing in a grassy field, alone."
+    ]
+
+    # Các câu trả lời của mô hình ngôn ngữ sẽ được đưa vào list các documents_augement để về sau mô hình ngôn ngữ truy vấn
+    for image in external_images:
+        documents_augement.extend(image["questions_response"])
+
+    # Khởi tạo RAG module
+    Retrieval_module = RAG_module()
+    for document in documents_augement:
+        Retrieval_module.initalize_embedding_database(text=documents_augement)
+
+    # Sau khi khởi tạo, lưu lại các embedding vector thành file .json
+    json_object = json.dumps(Retrieval_module.embedding_dicts)
+
+    with open("embedding_dicts.json", "w") as outfile:
+        outfile.write(json_object)
+
+    # Thực hiện việc truy xuất thông tin từ RAG module 
+    output_RAG = RAG_module.find_top_k_embedding(query=input, k=10)
+    print(output_RAG)
 

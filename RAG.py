@@ -1,3 +1,6 @@
+import torch
+import torch.nn as nn
+
 from langchain_text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
