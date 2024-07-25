@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from langchain_text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
 class RAG_module():
@@ -16,22 +16,23 @@ class RAG_module():
 
     def initalize_embedding_database(self, text):
         # Split token into chunks
-        text = self.text_splitter.create_documents([text])
+        text = self.text_splitter.create_documents(text)
 
         for chunk in text:
             content = chunk.page_content
             embedding = self.model.encode(content, convert_to_tensor=True)
-            embedding_dict = {"sentence": content, "embedding": embedding}
+            embedding_dict = {"sentence": content, "embedding": embedding.tolist()}
             self.embedding_dicts.append(embedding_dict)
     
     def find_top_k_embedding(self, query, k=5):
-        query_embedding = self.model.endcode(query, convert_to_tensor=True)
+        query_embedding = self.model.encode(query, convert_to_tensor=True)
         scores = []
         for chunk in self.embedding_dicts:
-            score = self.cos(chunk["sentence"], query_embedding)
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            score = self.cos(torch.tensor(chunk["embedding"]).unsqueeze(0).to(device), query_embedding.unsqueeze(0).to(device))
             scores.append(score)
 
-        top_k_indices = torch.topk(values=torch.tensor(scores), k=k).indices
-        top_k_chunks = [self.embedding_dicts[i.item()]["sentences"] for i in top_k_indices]
+        top_k_indices = torch.topk(input=torch.tensor(scores), k=k).indices.tolist()
+        top_k_chunks = [self.embedding_dicts[i.item()]["sentence"] for i in top_k_indices]
         return top_k_chunks
 
