@@ -263,7 +263,7 @@ def orientation_similarity(orientation1: Tuple[float, float, float], orientation
     cos_similarity = np.dot(vector1, vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
     return cos_similarity
 
-def parallelism_score(assets: List[Layout]) -> float:
+def parallelism_score(assets: List[Layout], score: List[float]) -> float:
     """
     Evaluates and returns a score indicating the degree of parallelism in a list of assets' layouts, considering both position and ori
 
@@ -274,7 +274,8 @@ def parallelism_score(assets: List[Layout]) -> float:
     float: A score between 0 and 1 indicating the parallelism of the assets.
     """
     if len(assets) < 2:
-        return 1.0 # Single asset or no asset is arbitrarily considered perfectly parallel
+        score[0] = 1.0
+        return score[0] # Single asset or no asset is arbitrarily considered perfectly parallel
     
     # Positional parallelism
     vectors = [calculate_vector(assets[i].location, assets[i+1].location) for i in range(len(assets)-1)]
@@ -286,12 +287,22 @@ def parallelism_score(assets: List[Layout]) -> float:
     print(f"orientation_similarities: {orientation_similarities}")
 
     # Combine scores
+    print(f"dot_products_position: {dot_products_position}")
     position_score = np.mean([0.5 * (dot + 1) for dot in dot_products_position])
     orientation_score = np.mean([(similarity + 1) / 2 for similarity in orientation_similarities])
 
+    print(f"position_score: {position_score}")
+    print(f"orientation_score: {orientation_score}")
+
     # Average the position and orientation scores for the final score
-    final_score = (position_score + orientation_score) / 2
-    return final_score
+    if (len(dot_products_position) != 0):
+        score[0] = (position_score + orientation_score) / 2
+    else:
+        score[0] = (0 + orientation_score) / 2
+
+    print(f"parallelism_score: {score[0]}")
+
+    return score[0]
 
 def calculate_distance(location1: Tuple[float, float, float], location2: Tuple[float, float, float]) -> float:
     """Calculate the Euclidean distance between two points."""
@@ -431,7 +442,7 @@ def symmetry_score(score: List[float], assets: List[Layout], axis: str) -> float
 
     return score[0]
 
-def perpendicularity_score(object1: Layout, object2: Layout) -> float:
+def perpendicularity_score(object1: Layout, object2: Layout, score: List[float]) -> float:
     """
     Calculates a score indicating how perpendicular two objects are, based on their forward direction vectors.
     
@@ -445,8 +456,8 @@ def perpendicularity_score(object1: Layout, object2: Layout) -> float:
     vector1 = euler_to_forward_vector(object1.orientation)
     vector2 = euler_to_forward_vector(object2.orientation)
     cos_angle = np.dot(vector1, vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
-    score = 1 - np.abs(cos_angle)
-    return score
+    score[0] = 1 - np.abs(cos_angle)
+    return score[0]
 
 def calculate_volume(layout: Layout) -> float:
     """Calculate the volume of an object based on its layout dimensions."""
@@ -721,8 +732,8 @@ class Movement():
 # Các quỹ đạo chuyển động
 def circle(location: Tuple[float, float, float], step: float, number_step: float, speed: float, radius: float):
     angle = step/number_step * 2 * math.pi
-    x = location[0] + speed * radius * math.cos(angle)
-    y = location[1] + speed * radius * math.sin(angle)
+    x = location[0] + speed * radius * math.cos(angle) * 0.5
+    y = location[1] + speed * radius * math.sin(angle) * 0.5
     z = location[2]
     return (x, y, z)
 
@@ -913,13 +924,13 @@ initial_position = {
 }
 
 constraints = [
-  (proximity_score, {"object1": "playground_slide", "object2": "playground_swing"}),
-  (proximity_score, {"object1": "little_girl", "object2": "medium_dog"}),
-  (direction_score, {"object1": "little_girl", "object2": "medium_dog"}),
-  (alignment_score, {"assets": ["playground_slide", "playground_swing"], "axis": "x"}),
-  (perpendicularity_score, {"object1": "playground_slide", "object2": "playground_swing"}),
-  (parallelism_score, {"assets": ["playground_slide", "playground_swing"]}),
-  (rotation_uniformity_score, {"objects": ["playground_slide", "playground_swing"], "center": (0, 0, 0)})
+  ("proximity_score", {"object1": "playground_slide", "object2": "playground_swing"}),
+  ("proximity_score", {"object1": "little_girl", "object2": "medium_dog"}),
+  ("direction_score", {"object1": "little_girl", "object2": "medium_dog"}),
+  ("alignment_score", {"assets": ["playground_slide", "playground_swing"], "axis": "x"}),
+  ("perpendicularity_score", {"object1": "playground_slide", "object2": "playground_swing"}),
+  ("parallelism_score", {"assets": ["playground_slide", "playground_swing"]}),
+  ("rotation_uniformity_score", {"objects": ["playground_slide", "playground_swing"], "center": (0, 0, 0)})
 ]
 """    
     exec(output_phase_3_2_2)
@@ -928,7 +939,7 @@ constraints = [
     assets = {}
     for object in object_list:
         assets[object["name"]] = None
-        import_obj = f'assets["{object["name"]}"] = import_object("/home/khai/Desktop/Repo/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/object/{object["name"]}.obj", location={initial_position[object["name"]]}, orientation=(0, 0, 0))'
+        import_obj = f'assets["{object["name"]}"] = import_object("/home/khai/Desktop/Repo/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/object/{object["name"]}.obj", location={initial_position[object["name"]]}, orientation=(1.5708, 0, 0))'
         exec(import_obj)        
 
 # Phase 3.2.3: Thực hiện khởi tạo môi trường
@@ -988,28 +999,28 @@ trajectory = {
 {
 "frame_start": 0,
 "frame_end": 60,
-"trajectory": (circle, {"radius": 1.0}),
+"trajectory": ("circle", {"radius": 1.0}),
 "speed": 1.0,
 "object": "little_girl"
 },
 {
 "frame_start": 0,
 "frame_end": 60,
-"trajectory": (circle, {"radius": 1.0}),
+"trajectory": ("circle", {"radius": 1.0}),
 "speed": 1.0,
 "object": "medium_dog"
 },
 {
 "frame_start": 60,
 "frame_end": 120,
-"trajectory": (straight, {"orientation": (0, 1, 0)}),
+"trajectory": ("straight", {"orientation": (0, 1, 0)}),
 "speed": 0.5,
 "object": "little_girl"
 },
 {
 "frame_start": 60,
 "frame_end": 120,
-"trajectory": (straight, {"orientation": (0, 1, 0)}),
+"trajectory": ("straight", {"orientation": (0, 1, 0)}),
 "speed": 0.5,
 "object": "medium_dog"
 }
