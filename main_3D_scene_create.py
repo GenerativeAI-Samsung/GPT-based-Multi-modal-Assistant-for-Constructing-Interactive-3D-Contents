@@ -688,18 +688,17 @@ def import_object(object_path: str, location: Tuple[float, float, float], orient
 # Phần này là các hàm chuyển động cho các đối tượng trong cảnh
 # -------------------------------------------------------------------------------------------------
 class Movement():
-    def __init__(self, frame_start, frame_end, speed, trajectory, object):
+    def __init__(self, frame_start, frame_end, trajectory, object):
         self.frame_start = frame_start
         self.frame_end = frame_end
-        self.speed = speed
         self.trajectory = trajectory 
         self.object = object
 
+    # Using Lagrange interpolate
+    # Interpolate for frame (step + 1)
+
     def move(self, current_frame):
         if (current_frame >= self.frame_start) and (current_frame <= self.frame_end):    
-            trajectory, param = self.trajectory
-            print(trajectory)
-            print(param)
 
             # Current location
             x = self.object.imported_object.location[0]
@@ -707,41 +706,52 @@ class Movement():
             z = self.object.imported_object.location[2]
 
             # The total number of step
-            number_step = self.frame_end - self.frame_start + 1
+            total_step = self.frame_end - self.frame_start + 1
 
             # Step
-            step = current_frame - self.frame_start + 1 
+            step = current_frame - self.frame_start 
 
-            # Set the new location
-            if (trajectory == "circle"):
-                self.object.imported_object.location = circle(location = [x, y, z], 
-                                                              step=step,
-                                                              number_step=number_step, 
-                                                              speed=self.speed,
-                                                              **param)
-            elif (trajectory == "straight"):
-                self.object.imported_object.location = straight(location = [x, y, z],
-                                                step=step,
-                                                number_step=number_step, 
-                                                speed=self.speed,
-                                                **param)
+            # Set the new location (Old version)
+            # ----------------------------------------------------------------------------------
+            # if (trajectory == "circle"):
+            #     self.object.imported_object.location = circle(location = [x, y, z], 
+            #                                                   step=step,
+            #                                                   number_step=number_step, 
+            #                                                   speed=self.speed,
+            #                                                   **param)
+            # elif (trajectory == "straight"):
+            #     self.object.imported_object.location = straight(location = [x, y, z],
+            #                                     step=step,
+            #                                     number_step=number_step, 
+            #                                     speed=self.speed,
+            #                                     **param)
+            # ----------------------------------------------------------------------------------
 
             # Insert keyframe for the new location
-            self.object.imported_object.keyframe_insert(data_path="location", frame=current_frame)
+            for i, cordinate in enumerate(self.trajectory):
+                print(step)
+                if (step == round(total_step * i/(len(self.trajectory) - 1))) or (step == (self.frame_end - self.frame_start) and (i == len(self.trajectory) - 1)):
+                    self.object.imported_object.location = tuple(cordinate)
+                    print(f"cordinate: {cordinate}, step: {step}, total_step: {total_step}, i: {i}, len: {len(self.trajectory)}")
+                    self.object.imported_object.keyframe_insert(data_path="location", frame=current_frame)
 
+# -----------------------------------------------------------------------------------------
+# Old verison
 # Các quỹ đạo chuyển động
-def circle(location: Tuple[float, float, float], step: float, number_step: float, speed: float, radius: float):
-    angle = step/number_step * 2 * math.pi
-    x = location[0] + speed * radius * math.cos(angle) * 0.5
-    y = location[1] + speed * radius * math.sin(angle) * 0.5
-    z = location[2]
-    return (x, y, z)
+# def circle(location: Tuple[float, float, float], step: float, number_step: float, speed: float, radius: float):
+#     angle = step/number_step * 2 * math.pi
+#     x = location[0] + speed * radius * math.cos(angle) * 0.5
+#     y = location[1] + speed * radius * math.sin(angle) * 0.5
+#     z = location[2]
+#     return (x, y, z)
 
-def straight(location: Tuple[float, float, float], step: float, number_step: float, speed: float, orientation: Tuple[float, float, float]):
-    x = location[0] + speed * (number_step - step) * orientation[0] * 0.01
-    y = location[1] + speed * (number_step - step) * orientation[1] * 0.01
-    z = location[2] + speed * (number_step - step) * orientation[2] * 0.01
-    return (x, y, z)
+# def straight(location: Tuple[float, float, float], step: float, number_step: float, speed: float, orientation: Tuple[float, float, float]):
+#     x = location[0] + speed * (number_step - step) * orientation[0] * 0.01
+#     y = location[1] + speed * (number_step - step) * orientation[1] * 0.01
+#     z = location[2] + speed * (number_step - step) * orientation[2] * 0.01
+#     return (x, y, z)
+# -----------------------------------------------------------------------------------------
+
 # -------------------------------------------------------------------------------------------------
 
 
@@ -960,32 +970,20 @@ constraints = [
 # Phase 3.2.4: Sinh ra kịch bản chuyển động của các đối tượng chính
     context = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to script the animation sequences for objects based on natural language descriptions, the list of objects and their initial positions, and motion trajectory functions below.
-Please think step by step.
-
+Your job is to script the animation sequences for objects based on natural language descriptions, the list of objects and their initial positions
+please think step by step
 Natural language description: {input}
 
 Objects and their constraints, initial position:
 {initial_position}
 
-Motion trajectory functions:
-    circle(radius: float)
-        Moves in a circular trajectory around the origin.
-        Parameters:
-        radius: Radius of the circle.
+Your answer should be formatted as a dictionary with two main keys: total_frames and motions, where total_frames represents the total number of frames in the video, formatted as an integer, and motions is a list of motions that will occur in the video, where each element contains fields including start_frame, end_frame, and list the coordinates of the points through which the path will pass to later perform interpolation to create a trajectory."        
 
-
-    straight(orientation: Tuple[float, float, float]):
-        Moves in a straight line trajectory.
-        Parameters:
-        orientation: Tuple indicating the direction of movement (x, y, z).
-    
-Your answer should be formatted as a dictionary with two main keys: total_frames and motions, where total_frames represents the total number of frames in the video, formatted as an integer, and motions is a list of motions that will occur in the video, where each element contains fields including start_frame, end_frame, speed, and motion trajectory function        
 After determining your answer, structure them in this format:
 trajectory = {{
     "total_frames": total_frame,
     "motions": [
-        {{"frame_start": frame_start, "frame_end": frame_end, "trajectory": (trajectory, {{"param1": value1, ...}}), "speed": speed, "object": object}}, 
+        {{"frame_start": frame_start, "frame_end": frame_end, "trajectory": [cordinate1, cordinate2, ...], "object": object}}, 
         ...
             ]
 }}
@@ -994,52 +992,53 @@ Avoid using normal text; format your response strictly as specified above.
 
     output_phase_3_2_4 = """
 trajectory = {
-"total_frames": 120,
-"motions": [
-{
-"frame_start": 0,
-"frame_end": 60,
-"trajectory": ("circle", {"radius": 1.0}),
-"speed": 1.0,
-"object": "little_girl"
-},
-{
-"frame_start": 0,
-"frame_end": 60,
-"trajectory": ("circle", {"radius": 1.0}),
-"speed": 1.0,
-"object": "medium_dog"
-},
-{
-"frame_start": 60,
-"frame_end": 120,
-"trajectory": ("straight", {"orientation": (0, 1, 0)}),
-"speed": 0.5,
-"object": "little_girl"
-},
-{
-"frame_start": 60,
-"frame_end": 120,
-"trajectory": ("straight", {"orientation": (0, 1, 0)}),
-"speed": 0.5,
-"object": "medium_dog"
-}
-]
+    "total_frames": 240,
+    "motions": [
+        {"frame_start": 1, "frame_end": 60, "trajectory": [(6, 1, 0), (7, 1, 0), (8, 1, 0)], "object": "little_girl"},
+        {"frame_start": 1, "frame_end": 60, "trajectory": [(6, -1, 0), (7, -1, 0), (8, -1, 0)], "object": "medium_dog"},
+        {"frame_start": 61, "frame_end": 120, "trajectory": [(8, 1, 0), (9, 2, 0), (10, 3, 0)], "object": "little_girl"},
+        {"frame_start": 61, "frame_end": 120, "trajectory": [(8, -1, 0), (9, -2, 0), (10, -3, 0)], "object": "medium_dog"},
+        {"frame_start": 121, "frame_end": 180, "trajectory": [(10, 3, 0), (11, 3, 0), (12, 3, 0)], "object": "little_girl"},
+        {"frame_start": 121, "frame_end": 180, "trajectory": [(10, -3, 0), (11, -3, 0), (12, -3, 0)], "object": "medium_dog"},
+        {"frame_start": 181, "frame_end": 240, "trajectory": [(12, 3, 0), (12, 2, 0), (12, 1, 0)], "object": "little_girl"},
+        {"frame_start": 181, "frame_end": 240, "trajectory": [(12, -3, 0), (12, -2, 0), (12, -1, 0)], "object": "medium_dog"}
+    ]
 }
 """
+#     output_phase_3_2_4= """
+# trajectory = {
+# "total_frames": 240,
+# "motions": [
+# {"frame_start": 1, "frame_end": 60, "trajectory": [(6, 1, 0), (7, 1, 1), (8, 1, 2), (9, 1, 1), (10, 1, 0)], "object": "little_girl"},
+# {"frame_start": 1, "frame_end": 60, "trajectory": [(6, -1, 0), (7, -1, 1), (8, -1, 2), (9, -1, 1), (10, -1, 0)], "object": "medium_dog"},
+# {"frame_start": 61, "frame_end": 120, "trajectory": [(10, 1, 0), (11, 2, 0), (12, 3, 0), (13, 2, 0), (14, 1, 0)], "object": "little_girl"},
+# {"frame_start": 61, "frame_end": 120, "trajectory": [(10, -1, 0), (11, -2, 0), (12, -3, 0), (13, -2, 0), (14, -1, 0)], "object": "medium_dog"},
+# {"frame_start": 121, "frame_end": 180, "trajectory": [(14, 1, 0), (15, 2, 0), (16, 3, 0), (17, 2, 0), (18, 1, 0)], "object": "little_girl"},
+# {"frame_start": 121, "frame_end": 180, "trajectory": [(14, -1, 0), (15, -2, 0), (16, -3, 0), (17, -2, 0), (18, -1, 0)], "object": "medium_dog"},
+# {"frame_start": 181, "frame_end": 240, "trajectory": [(18, 1, 0), (19, 2, 0), (20, 3, 0), (21, 2, 0), (22, 1, 0)], "object": "little_girl"},
+# {"frame_start": 181, "frame_end": 240, "trajectory": [(18, -1, 0), (19, -2, 0), (20, -3, 0), (21, -2, 0), (22, -1, 0)], "object": "medium_dog"}
+# ]
+# }
+# """
+
     exec(output_phase_3_2_4)
 
     # Create movement to blender
     num_frames = trajectory["total_frames"]
     mov_list = []
     for i, motion in enumerate(trajectory["motions"]):
-        func = f'mov{i} = Movement(frame_start={motion["frame_start"]}, frame_end={motion["frame_end"]}, trajectory={motion["trajectory"]}, speed={motion["speed"]}, object={assets[motion["object"]]})'
+        func = f'mov{i} = Movement(frame_start={motion["frame_start"]}, frame_end={motion["frame_end"]}, trajectory={motion["trajectory"]}, object={assets[motion["object"]]})'
         exec(func)
         mov_list.append(f"mov{i}")
 
     for frame in range(num_frames):
         for mov in mov_list:
-            func = f"{mov}.move(current_frame={frame})"
+            func = f"{mov}.move(current_frame={frame + 1})"
             exec(func)
 
     bpy.context.scene.frame_end = num_frames 
+
+# Because of the un-unified of object size and location, a little bit of change should make on:
+#   playground_swing: (x, y, z) scale -> 0.01; z location -> -0.69
+#   playground_slight: (x, y, z) scale -> 0.01; z location -> -0.61
+#   garden_grassy: (x, y, z) scale -> (0.3, 0.3, 0.01); z location -> -0.7; x rotation -> 0
