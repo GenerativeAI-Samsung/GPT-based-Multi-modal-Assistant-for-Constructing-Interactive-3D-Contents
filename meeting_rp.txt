@@ -1,0 +1,17 @@
+Note:
+	- explain the errors clearly + solution regarding ros installation
+	- preparing for the experiment (robotic arm, test flight, ...). Need to post a detail plan.
+Progress:
+	1. implementation of inverse kinematics: go with the trigonometric approach. benchmark based on precision (what about execution time?)
+	2. ORB, SIFT: nothing
+TODO: 
+	- Quickly deploy the inverse kinematics source code onto the raspberry pi 4.
+	- Image processing: acquire the image from usb camera attached on the drone. This is where we can contribute scientifically.
+	- Conduct scientific literature research intensively.
+	- Give a summary about the lastest progress in different topics.
+	- Expect video-proof experiment by the end of the week.
+	
+Publication Generative AI:
+- Một số tính chất của hệ thống: nhân quả + bất biến, phụ thuộc vào dòng sự kiện xảy ra
+- Fine-tuning - purpose specific. Thu hẹp tập đích.
+- Methods thuộc về đối tượng.
