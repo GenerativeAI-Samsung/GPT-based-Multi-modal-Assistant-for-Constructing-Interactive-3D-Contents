@@ -792,7 +792,7 @@ object_list = [
   {{"name": x3, "description": y3}},
   ...
 ]
-Describe each asset with a concise name (x) and a detailed visual description (y). 
+Each asset is described with a concise name (x) and a detailed visual description (y). 
 Avoid using normal text; format your response strictly as specified above.
 
 Natural language description: {input}
@@ -858,7 +858,6 @@ Objects list:
 Natural language description: {input}
 
 For each step, structure your output as:
-
 layout_plan_i = {{
 "title": title_i,
 "asset_list": [asset_name_1, asset_name_2],
@@ -974,10 +973,8 @@ Your job is to script the animation sequences for objects based on natural langu
 please think step by step
 Natural language description: {input}
 
-Objects and their constraints, initial position:
+Objects initial position:
 {initial_position}
-
-Your answer should be formatted as a dictionary with two main keys: total_frames and motions, where total_frames represents the total number of frames in the video, formatted as an integer, and motions is a list of motions that will occur in the video, where each element contains fields including start_frame, end_frame, and list the coordinates of the points through which the path will pass to later perform interpolation to create a trajectory."        
 
 After determining your answer, structure them in this format:
 trajectory = {{
@@ -987,6 +984,8 @@ trajectory = {{
         ...
             ]
 }}
+where total_frames represents the total number of frames in the video, formatted as an integer, and motions is a list of motions that will occur in the video, where each element contains fields including start_frame, end_frame, and list the coordinates of the points through which the path will pass to later perform interpolation to create a trajectory.
+
 Avoid using normal text; format your response strictly as specified above.
 """
 
