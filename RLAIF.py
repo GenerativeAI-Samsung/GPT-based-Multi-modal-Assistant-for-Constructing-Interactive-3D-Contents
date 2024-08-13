@@ -55,7 +55,7 @@ def running_step1(tokenizer, model, criteria, user_request):
     step1_answer_format, step1_prompt, step1_response = step1(tokenizer=tokenizer, model=model, user_request=user_request)
     
     reward_prompt = prompt_reward(criteria=criteria, answer_format=step1_answer_format, prompt=step1_prompt, response=step1_response)
-    return reward_prompt
+    return step1_response, reward_prompt
 
 def running_step2(tokenizer, model, criteria, user_request):
     _, _, step1_response = step1(tokenizer=tokenizer, model=model, user_request=user_request)
@@ -202,7 +202,7 @@ if __name__ == '__main__':
 
     # Access to choosen criteria 
     criterias = [step1_criteria, step2_criteria, step3_criteria, step4_criteria, step5_criteria]
-    working_criteria = criterias[int(running_step - 1)]
+    working_criteria = criterias[int(running_step) - 1]
 
     # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
     adapter_folder = f"/content/adapter_folder/step{int(running_step)}" 
@@ -213,18 +213,18 @@ if __name__ == '__main__':
     # Loading base model
     base_model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
 
-    if (setting_option == 1): 
+    if (setting_option == '1'): 
         peft_model = PeftModel.from_pretrained(
                 base_model,
                 MODEL_ID,
                 subfolder="loftq_init",
                 is_trainable=True)
-    elif (setting_option == 2):
+    elif (setting_option == '2'):
         peft_model = PeftModel.from_pretrained(
                 base_model,
                 adapter_folder,
                 is_trainable=True)
-    elif (setting_option == 3):
+    elif (setting_option == '3'):
         peft_model = PeftModel.from_pretrained(
                 base_model,
                 adapter_folder,
@@ -280,17 +280,18 @@ The girl, dressed in her colorful outfit, is happily playing with her medium-siz
 The garden might include elements of a playground to enhance the playful atmosphere.
 """
     if (running_step == '1'):
-        reward_prompt = running_step1(tokenizer=tokenizer, model=peft_model, user_request=user_request)
+        step1_response, reward_prompt = running_step1(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
         print(reward_prompt)
+        print(step1_response)
     elif (running_step == '2'):
-        reward_prompt = running_step2(tokenizer=tokenizer, model=peft_model, user_request=user_request)
+        reward_prompt = running_step2(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
         print(reward_prompt)
     elif (running_step == '3'):
-        reward_prompt = running_step3(tokenizer=tokenizer, model=peft_model, user_request=user_request)
+        reward_prompt = running_step3(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
         print(reward_prompt)
     elif (running_step == '4'):
-        reward_prompt = running_step4(tokenizer=tokenizer, model=peft_model, user_request=user_request)
+        reward_prompt = running_step4(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
         print(reward_prompt)
     elif (running_step == '5'):
-        reward_prompt = running_step5(tokenizer=tokenizer, model=peft_model, user_request=user_request)
+        reward_prompt = running_step5(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
         print(reward_prompt)
