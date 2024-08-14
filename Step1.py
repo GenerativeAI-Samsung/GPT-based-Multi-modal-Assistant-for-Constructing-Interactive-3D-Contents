@@ -20,9 +20,9 @@ After listing the assets, structure them in this format:
 
 Avoid using normal text; format your response strictly as specified above.
 
-Natural language description: {user_request}
-Respone: 
+Natural language description: {user_request} 
 """
+    step1_prompt += "\nRespone:" 
     
     step1_response = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step1_prompt)
     step1_response = split_answer_from_respone(respone=step1_response)

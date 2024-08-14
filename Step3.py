@@ -26,9 +26,8 @@ For each step, structure your output as:
 {step3_answer_format}
 
 Avoid using normal text; format your response strictly as specified above.
-Respone: 
 """
-    
+    step3_prompt += "\nRespone:"
     step3_response = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step3_prompt)
     step3_response = split_answer_from_respone(respone=step3_response)
     

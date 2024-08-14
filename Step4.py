@@ -42,7 +42,7 @@ After determining initial_position and constraints, structure them in this forma
 Avoid using normal text; format your response strictly as specified above.
 Respone: 
 """
-    
+    step4_prompt += "\nRespone:"
     step4_response = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step4_prompt)
     step4_response = split_answer_from_respone(respone=step4_response)
     

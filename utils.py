@@ -21,38 +21,10 @@ def interact_with_lm(tokenizer, model, prompt):
 
     return outputs
 
-bl_info = {
-    "name": "GPT Blender",
-    "author": "Embedded Networking Laboratory",
-    "version": (1, 0),
-    "blender": (2, 80, 0),
-    "location": "",
-    "description": "Instant 3D content generation via LLM",
-    "warning": "",
-    "doc_url": "",
-    "category": "3D content generation",
-}
-
-def generate_response(self, history, new_prompt):
-    messages = [
-        {"role": "system", "content": "You're an assistant to help in Blender code. Your job is help user writting a full Blender program in Python"},
-    ]
-    messages.extend([{"role": entry.role, "content": entry.content} for entry in history])
-    messages.append(new_prompt)
-    
-    response = self.client.chat.completions.create(
-        model="gpt-3.5-turbo-16k",
-        messages=messages
+def generate_reward_score_from_api(prompt):
+    client = Client()
+    response = client.chat.completions.create(
+        model="gpt-4-turbo",
+        messages=[{"role": "user", "content": prompt}]
     )
-    
-    response_content = response.choices[0].message.content
-
-    user_entry = history.add()
-    user_entry.role = "user"
-    user_entry.content = new_prompt['content']
-
-    assistant_entry = history.add()
-    assistant_entry.role = "assistant"
-    assistant_entry.content = response_content
-    
-    return response_content
+    return response.choices[0].message.content

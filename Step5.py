@@ -31,7 +31,7 @@ After determining your answer, structure them in this format:
 Avoid using normal text; format your response strictly as specified above.
 Respone: 
 """
-    
+    step5_prompt += "\nRespone:"
     step5_response = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step5_prompt)
     step5_response = split_answer_from_respone(respone=step5_response)
     

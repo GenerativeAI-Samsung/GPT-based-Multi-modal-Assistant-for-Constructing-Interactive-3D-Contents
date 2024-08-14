@@ -1,6 +1,6 @@
 import torch
 import transformers
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 
 from typing import Dict
@@ -10,6 +10,8 @@ from Step2 import step2
 from Step3 import step3
 from Step4 import step4
 from Step5 import step5
+
+from utils import generate_reward_score_from_api
 
 def smart_tokenizer_and_embedding_resize(
     special_tokens_dict: Dict,
@@ -43,8 +45,13 @@ The criteria include:
 The responder's answer is formatted as:
 {answer_format}
 
-Avoid using normal text; format your response strictly as specified above.
+After determining your answer, structure them in this format:
+rewarding_score = [{{'name': criteria1, 'score': score1, 'description': description1}}, 
+                    {{'name': criteria2, 'score': score2, 'description': description2}},
+                    ...]
 
+Avoid using normal text; format your response strictly as specified above.
+----------------------------------------------------------------------------------------------------------
 User's request: "{prompt}"
 
 Responder's answer: {response}
@@ -55,7 +62,7 @@ def running_step1(tokenizer, model, criteria, user_request):
     step1_answer_format, step1_prompt, step1_response = step1(tokenizer=tokenizer, model=model, user_request=user_request)
     
     reward_prompt = prompt_reward(criteria=criteria, answer_format=step1_answer_format, prompt=step1_prompt, response=step1_response)
-    return step1_response, reward_prompt
+    return reward_prompt
 
 def running_step2(tokenizer, model, criteria, user_request):
     _, _, step1_response = step1(tokenizer=tokenizer, model=model, user_request=user_request)
@@ -282,8 +289,11 @@ The garden might include elements of a playground to enhance the playful atmosph
 """
     if (running_step == '1'):
         step1_response, reward_prompt = running_step1(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
-        print(reward_prompt)
-        print(step1_response)
+        score = generate_reward_score_from_api(prompt=reward_prompt)
+        
+        print(f"reward_prompt: {reward_prompt}")
+        print("\n--------------------------------------------------------------\n")
+        print(f"score: {score}")
     elif (running_step == '2'):
         reward_prompt = running_step2(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
         print(reward_prompt)
@@ -296,3 +306,4 @@ The garden might include elements of a playground to enhance the playful atmosph
     elif (running_step == '5'):
         reward_prompt = running_step5(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
         print(reward_prompt)
+    
