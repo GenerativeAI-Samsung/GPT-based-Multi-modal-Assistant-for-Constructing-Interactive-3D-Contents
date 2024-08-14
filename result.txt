@@ -1,0 +1,85 @@
+reward_prompt: 
+You are an evaluator. Your task is to grade the response provided by the responder to the user's request based on specific criteria, using a 100-point scale.
+The criteria include:
+	-Accuracy: Are the objects identified fully and accurately?
+	-Coverage: Is any necessary object for the scene missing?
+	-Relevance to Requirements: Do the objects align with the goals and requirements of the scene?
+
+
+The responder's answer is formatted as:
+
+object_list = [
+  {"name": x1, "description": y1},
+  {"name": x2, "description": y2},
+  {"name": x3, "description": y3},
+  ...
+]
+Each asset is described with a concise name (x) and a detailed visual description (y).
+
+
+After determining your answer, structure them in this format:
+rewarding_score = [{'name': criteria1, 'score': score1, 'description': description1}, 
+                    {'name': criteria2, 'score': score2, 'description': description2},
+                    ...]
+
+Avoid using normal text; format your response strictly as specified above.
+----------------------------------------------------------------------------------------------------------
+User's request: "
+You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
+Your job is to list the assets individually, ensuring each is a single unit (avoiding composite sets). 
+After listing the assets, structure them in this format:
+
+object_list = [
+  {"name": x1, "description": y1},
+  {"name": x2, "description": y2},
+  {"name": x3, "description": y3},
+  ...
+]
+Each asset is described with a concise name (x) and a detailed visual description (y).
+
+
+Avoid using normal text; format your response strictly as specified above.
+
+Natural language description: 
+To create a 3D scene for the text "A girl plays with her dog in the garden," we can use the following details:
+
+    The Setting:
+        The scene takes place in a garden, which includes a grassy field.
+        Consider adding elements to make it look like a children's playground.
+
+    The Girl:
+        She is young, possibly a little girl or a pre-teen.
+        She is wearing a yellow sweater, a dress, and a pair of high heels.
+        Her clothing is mostly bright and colorful.
+
+    The Dog:
+        The dog is medium-sized.
+        The dog can be portrayed standing or interacting with the girl.
+
+    Interaction:
+        The girl is playing with the dog, so they should be interacting with each other in a playful manner.
+
+Based on these details, you can imagine a vibrant and joyful scene. 
+The girl, dressed in her colorful outfit, is happily playing with her medium-sized dog in a lush, green garden. 
+The garden might include elements of a playground to enhance the playful atmosphere.
+ 
+
+Respone:"
+
+Responder's answer:  
+object_list = [
+  {"name": "garden", "description": "The scene takes place in a garden, which includes a grassy field. Consider adding elements to make it look like a children's playground."},
+  {"name": "girl", "description": "She is young, possibly a little girl or a pre-teen. She is wearing a yellow sweater, a dress, and a pair of high heels. Her clothing is mostly bright and colorful."},
+  {"name": "dog", "description": "The dog is medium-sized. The dog can be portrayed standing or interacting with the girl."},
+  {"name": "interaction", "description": "The girl is playing with the dog, so they should be interacting with each other in a playful manner."}
+]
+
+
+
+--------------------------------------------------------------
+
+score: rewarding_score = [
+  {'name': 'Accuracy', 'score': 90, 'description': 'The descriptions accurately reflect the detailed visual characteristics given in the user’s request. However, the item "interaction" is not an object but rather a description of activity.'},
+  {'name': 'Coverage', 'score': 80, 'description': 'All main elements (girl, dog, garden) are covered, but no specific playground elements are listed as separate objects which could further detail the scene as per the description.'},
+  {'name': 'Relevance to Requirements', 'score': 95, 'description': 'The objects listed align closely with the scene’s goals and requirements. The descriptive approach for each object matches well with the natural language description provided.'}
+]

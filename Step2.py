@@ -23,7 +23,7 @@ After listing the assets, structure them in this format:
 Avoid using normal text; format your response strictly as specified above.
 """
     step2_prompt += "\nRespone:"
-    step2_response = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step2_prompt)
+    step2_response, step2_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step2_prompt, setting="peft_model")
     step2_response = split_answer_from_respone(respone=step2_response)
     
-    return step2_answer_format, step2_prompt, step2_response
+    return step2_answer_format, step2_prompt, step2_response, step2_last_hidden_state

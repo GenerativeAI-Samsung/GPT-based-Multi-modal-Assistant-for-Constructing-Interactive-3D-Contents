@@ -43,7 +43,7 @@ Avoid using normal text; format your response strictly as specified above.
 Respone: 
 """
     step4_prompt += "\nRespone:"
-    step4_response = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step4_prompt)
+    step4_response, step4_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step4_prompt, setting="peft_model")
     step4_response = split_answer_from_respone(respone=step4_response)
     
-    return step4_answer_format, step4_prompt, step4_response
+    return step4_answer_format, step4_prompt, step4_response, step4_last_hidden_state

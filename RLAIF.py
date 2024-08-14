@@ -11,12 +11,13 @@ from Step3 import step3
 from Step4 import step4
 from Step5 import step5
 
-from utils import generate_reward_score_from_api
+from utils import generate_reward_score_from_api, interact_with_lm, RLAIF_loss_fuction
 
 def smart_tokenizer_and_embedding_resize(
     special_tokens_dict: Dict,
     tokenizer: transformers.PreTrainedTokenizer,
     model: transformers.PreTrainedModel,
+    base_model: transformers.PreTrainedModel
 ):
     """Resize tokenizer and embedding.
 
@@ -24,6 +25,7 @@ def smart_tokenizer_and_embedding_resize(
     """
     num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
     model.resize_token_embeddings(len(tokenizer))
+    base_model.resize_token_embeddings(len(tokenizer))
 
     if num_new_tokens > 0:
         input_embeddings = model.get_input_embeddings().weight.data
@@ -37,7 +39,7 @@ def smart_tokenizer_and_embedding_resize(
 
 def prompt_reward(criteria, answer_format, prompt, response):
     formatted_criteria = "".join(f"\t-{item['name']}: {item['description']}\n" for item in criteria)
-    reward_prompt = f"""
+    rewarding_prompt = f"""
 You are an evaluator. Your task is to grade the response provided by the responder to the user's request based on specific criteria, using a 100-point scale.
 The criteria include:
 {formatted_criteria}
@@ -56,41 +58,45 @@ User's request: "{prompt}"
 
 Responder's answer: {response}
 """
-    return reward_prompt
+    return rewarding_prompt
 
-def running_step1(tokenizer, model, criteria, user_request):
-    step1_answer_format, step1_prompt, step1_response = step1(tokenizer=tokenizer, model=model, user_request=user_request)
+def running_step1(tokenizer, model, base_model, criteria, user_request):
+    step1_answer_format, step1_prompt, step1_response, step1_last_hidden_state = step1(tokenizer=tokenizer, model=model, user_request=user_request)
     
-    reward_prompt = prompt_reward(criteria=criteria, answer_format=step1_answer_format, prompt=step1_prompt, response=step1_response)
-    return reward_prompt
+    step1_base_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=base_model, prompt=step1_prompt, setting="base_model")
+    rewarding_prompt = prompt_reward(criteria=criteria, answer_format=step1_answer_format, prompt=step1_prompt, response=step1_response)
+    return rewarding_prompt, step1_last_hidden_state, step1_base_last_hidden_state
 
 def running_step2(tokenizer, model, criteria, user_request):
-    _, _, step1_response = step1(tokenizer=tokenizer, model=model, user_request=user_request)
-    step2_answer_format, step2_prompt, step2_response = step2(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
+    _, _, step1_response, _ = step1(tokenizer=tokenizer, model=model, user_request=user_request)
+    step2_answer_format, step2_prompt, step2_response, step2_last_hidden_state = step2(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
 
-    reward_prompt = prompt_reward(criteria=criteria, answer_format=step2_answer_format, prompt=step2_prompt, response=step2_response)
-    return reward_prompt
+    step2_base_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=base_model, prompt=step2_prompt, setting="base_model")
+    rewarding_prompt = prompt_reward(criteria=criteria, answer_format=step2_answer_format, prompt=step2_prompt, response=step2_response)
+    return rewarding_prompt, step2_last_hidden_state, step2_base_last_hidden_state
 
 def running_step3(tokenizer, model, criteria, user_request):
-    _, _, step1_response = step1(tokenizer=tokenizer, model=model, user_request=user_request)
-    step3_answer_format, step3_prompt, step3_response = step3(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
+    _, _, step1_response, _ = step1(tokenizer=tokenizer, model=model, user_request=user_request)
+    step3_answer_format, step3_prompt, step3_response, step3_last_hidden_state = step3(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
 
-    reward_prompt = prompt_reward(criteria=criteria, answer_format=step3_answer_format, prompt=step3_prompt, response=step3_response)
-    return reward_prompt
+    step3_base_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=base_model, prompt=step3_prompt, setting="base_model")
+    rewarding_prompt = prompt_reward(criteria=criteria, answer_format=step3_answer_format, prompt=step3_prompt, response=step3_response)
+    return rewarding_prompt, step3_last_hidden_state, step3_base_last_hidden_state
 
 def running_step4(tokenizer, model, criteria, user_request):
-    _, _, step1_response = step1(tokenizer=tokenizer, model=model, user_request=user_request)
-    _, _, step3_response = step3(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
-    step4_answer_format, step4_prompt, step4_response = step4(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response, step3_respone=step3_response)
+    _, _, step1_response, _ = step1(tokenizer=tokenizer, model=model, user_request=user_request)
+    _, _, step3_response, _ = step3(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
+    step4_answer_format, step4_prompt, step4_response, step4_last_hidden_state = step4(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response, step3_respone=step3_response)
 
-    reward_prompt = prompt_reward(criteria=criteria, answer_format=step4_answer_format, prompt=step4_prompt, response=step4_response)
-    return reward_prompt
+    step4_base_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=base_model, prompt=step4_prompt, prompt=step4_prompt, setting="base_model")
+    rewarding_prompt = prompt_reward(criteria=criteria, answer_format=step4_answer_format, prompt=step4_prompt, response=step4_response)
+    return rewarding_prompt, step4_last_hidden_state, step4_base_last_hidden_state
 
 def running_step5(tokenizer, model, criteria, user_request):
-    _, _, step1_response = step1(tokenizer=tokenizer, model=model, user_request=user_request)
-    _, _, step2_response = step2(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
-    _, _, step3_response = step3(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
-    _, _, step4_response = step4(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response, step3_respone=step3_response)
+    _, _, step1_response, _ = step1(tokenizer=tokenizer, model=model, user_request=user_request)
+    _, _, step2_response, _ = step2(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
+    _, _, step3_response, _ = step3(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response)
+    _, _, step4_response, _ = step4(tokenizer=tokenizer, model=model, user_request=user_request, step1_respone=step1_response, step3_respone=step3_response)
 
     exec(step2_response)
     exec(step4_response)
@@ -100,11 +106,11 @@ def running_step5(tokenizer, model, criteria, user_request):
     for main_obj in main_objs:
         main_obj_initial_position[main_obj] = initial_position[main_obj]
 
-    step5_answer_format, step5_prompt, step5_response = step5(tokenizer=tokenizer, model=model, user_request=user_request, step3_response=step3_response, initial_position=main_obj_initial_position)
+    step5_answer_format, step5_prompt, step5_response, step5_last_hidden_state = step5(tokenizer=tokenizer, model=model, user_request=user_request, step3_response=step3_response, initial_position=main_obj_initial_position)
 
-    reward_prompt = prompt_reward(criteria=criteria, answer_format=step5_answer_format, prompt=step5_prompt, response=step5_response)
-    return reward_prompt
-
+    step5_base_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=base_model, prompt=step5_prompt, setting="base_model")
+    rewarding_prompt = prompt_reward(criteria=criteria, answer_format=step5_answer_format, prompt=step5_prompt, response=step5_response)
+    return rewarding_prompt, step5_last_hidden_state, step5_base_last_hidden_state
 
 if __name__ == '__main__':
     # Interface
@@ -261,7 +267,9 @@ if __name__ == '__main__':
         special_tokens_dict=special_tokens_dict,
         tokenizer=tokenizer,
         model=peft_model,
+        base_model=base_model
     )
+
 
     # Test
     user_request = """
@@ -287,23 +295,18 @@ Based on these details, you can imagine a vibrant and joyful scene.
 The girl, dressed in her colorful outfit, is happily playing with her medium-sized dog in a lush, green garden. 
 The garden might include elements of a playground to enhance the playful atmosphere.
 """
-    if (running_step == '1'):
-        step1_response, reward_prompt = running_step1(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
-        score = generate_reward_score_from_api(prompt=reward_prompt)
-        
-        print(f"reward_prompt: {reward_prompt}")
-        print("\n--------------------------------------------------------------\n")
-        print(f"score: {score}")
-    elif (running_step == '2'):
-        reward_prompt = running_step2(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
-        print(reward_prompt)
-    elif (running_step == '3'):
-        reward_prompt = running_step3(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
-        print(reward_prompt)
-    elif (running_step == '4'):
-        reward_prompt = running_step4(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
-        print(reward_prompt)
-    elif (running_step == '5'):
-        reward_prompt = running_step5(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)
-        print(reward_prompt)
     
+    # Get response from Llama3 and feedback from GPT-4
+    custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=peft_model, criteria=working_criteria, user_request=user_request)"
+    exec(custom_run)
+
+    score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
+    exec(score_response)
+
+    loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+
+    print(f"reward_prompt: {rewarding_prompt}")
+    print("\n--------------------------------------------------------------\n")
+    print(f"rewarding_score: {rewarding_score}")
+    print("\n--------------------------------------------------------------\n")
+    print(f"loss_value: {loss_value}")
