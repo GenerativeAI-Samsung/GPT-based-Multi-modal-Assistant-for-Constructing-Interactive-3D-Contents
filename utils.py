@@ -16,17 +16,17 @@ def interact_with_lm(tokenizer, model, prompt, setting):
 
     # Generate the output
     if (setting == "peft_model"):
-        outputs = model.generate(**inputs, max_length=4096)
+        outputs = model.generate(**inputs, max_length=4096, output_hidden_states=True, return_dict_in_generate=True)
     if (setting == "base_model"):
         with torch.no_grad():
-            outputs = model.generate(**inputs, max_length=4096)
-
-    # Decode the generated tokens back to text
-    outputs = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            outputs = model.generate(**inputs, max_length=4096, output_hidden_states=True, return_dict_in_generate=True)
 
     # Extract the last hidden state from the decoder if using a seq2seq model, or directly if it's a causal model
     last_hidden_state = outputs.decoder_hidden_states[-1] if hasattr(outputs, 'decoder_hidden_states') else outputs.hidden_states[-1]
 
+    # Decode the generated tokens back to text
+    outputs = tokenizer.decode(outputs.sequences[0], skip_special_tokens=True)
+    
     return outputs, last_hidden_state
 
 def generate_reward_score_from_api(prompt):
@@ -47,12 +47,12 @@ def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_stat
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     reward_score.to(device)
-    last_hidden_state.to(device)
-    base_last_hidden_state.to(device)
+    last_hidden_state[0].to(device)
+    base_last_hidden_state[0].to(device)
 
     # Caculate KL loss between last_hidden_state and base_last_hidden_state
     kl_loss = nn.KLDivLoss(reduction="batchmean")
-    kl_loss_output = (last_hidden_state, base_last_hidden_state)
-
+    kl_loss_output = (last_hidden_state[0], base_last_hidden_state[0])
+    
     total_loss = (1 - beta) * reward_score + beta * kl_loss_output
     return total_loss
