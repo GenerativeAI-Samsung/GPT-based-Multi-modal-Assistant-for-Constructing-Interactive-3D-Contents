@@ -1,4 +1,5 @@
 import torch
+from utils import interact_with_lm, split_answer_from_respone
 
 def step2(tokenizer, model, user_request, step1_respone):
     step2_answer_format = """
@@ -20,19 +21,10 @@ After listing the assets, structure them in this format:
 {step2_answer_format}
 
 Avoid using normal text; format your response strictly as specified above.
+Respone: 
 """
-    # Tokenize the input prompt
-    inputs = tokenizer(step2_prompt, return_tensors="pt")
-
-    # Move tensors to the appropriate device (e.g., GPU if available)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-
-    # Generate the output
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_length=4096)
-
-    # Decode the generated tokens back to text
-    step2_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    step2_response = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step2_prompt)
+    step2_response = split_answer_from_respone(respone=step2_response)
     
     return step2_answer_format, step2_prompt, step2_response

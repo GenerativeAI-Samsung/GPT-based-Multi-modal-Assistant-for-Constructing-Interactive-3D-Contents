@@ -44,7 +44,7 @@ The responder's answer is formatted as:
 {answer_format}
 
 Avoid using normal text; format your response strictly as specified above.
-----------------------------------------------------------------------------------------------
+
 User's request: "{prompt}"
 
 Responder's answer: {response}
@@ -256,6 +256,7 @@ if __name__ == '__main__':
         model=peft_model,
     )
 
+    # Test
     user_request = """
 To create a 3D scene for the text "A girl plays with her dog in the garden," we can use the following details:
 

@@ -1,4 +1,5 @@
 import torch
+from utils import interact_with_lm, split_answer_from_respone
 
 def step3(tokenizer, model, user_request, step1_respone):
     step3_answer_format = """
@@ -25,19 +26,10 @@ For each step, structure your output as:
 {step3_answer_format}
 
 Avoid using normal text; format your response strictly as specified above.
+Respone: 
 """
-        # Tokenize the input prompt
-    inputs = tokenizer(step3_prompt, return_tensors="pt")
-
-    # Move tensors to the appropriate device (e.g., GPU if available)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-
-    # Generate the output
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_length=4096)
-
-    # Decode the generated tokens back to text
-    step3_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    step3_response = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step3_prompt)
+    step3_response = split_answer_from_respone(respone=step3_response)
     
     return step3_answer_format, step3_prompt, step3_response
