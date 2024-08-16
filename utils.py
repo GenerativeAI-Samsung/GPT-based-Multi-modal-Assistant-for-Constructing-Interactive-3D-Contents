@@ -41,6 +41,7 @@ def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_stat
     # Caculate the average rewarding score 
     for item in rewarding_score:
         reward_score = item['score']
+        print(f"item: {item},reward_score: {reward_score}")
     reward_score = torch.tensor(reward_score / (10 * len(rewarding_score))) 
 
     # Move tensors to the appropriate device (e.g., GPU if available)
@@ -50,9 +51,14 @@ def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_stat
     last_hidden_state[0].to(device)
     base_last_hidden_state[0].to(device)
 
+    print(f"last_hidden_state[0].shape: {last_hidden_state[0].shape}")
+    print(f"base_last_hidden_state[0].shape: {base_last_hidden_state[0].shape}")
+
     # Caculate KL loss between last_hidden_state and base_last_hidden_state
     kl_loss = nn.KLDivLoss(reduction="batchmean")
     kl_loss_output = (last_hidden_state[0], base_last_hidden_state[0])
     
+    print(f"kl_loss_output.shape: {kl_loss_output.shape}")
+
     total_loss = (1 - beta) * reward_score + beta * kl_loss_output
     return total_loss
