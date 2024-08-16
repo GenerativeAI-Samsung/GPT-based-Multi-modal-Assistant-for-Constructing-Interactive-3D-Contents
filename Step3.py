@@ -28,7 +28,7 @@ For each step, structure your output as:
 Avoid using normal text; format your response strictly as specified above.
 """
     step3_prompt += "\nRespone:"
-    step3_response, step3_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step3_prompt, setting="peft_model")
+    step3_response, step3_all_hidden_state = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step3_prompt, setting="peft_model")
     step3_response = split_answer_from_respone(respone=step3_response)
     
-    return step3_answer_format, step3_prompt, step3_response, step3_last_hidden_state
+    return step3_answer_format, step3_prompt, step3_response, step3_all_hidden_state

@@ -24,7 +24,7 @@ Natural language description: {user_request}
 """
     step1_prompt += "\nRespone:" 
     
-    step1_response, step1_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step1_prompt, setting="peft_model")
+    step1_response, step1_all_hidden_state = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step1_prompt, setting="peft_model")
     step1_response = split_answer_from_respone(respone=step1_response)
 
-    return step1_answer_format, step1_prompt, step1_response, step1_last_hidden_state
+    return step1_answer_format, step1_prompt, step1_response, step1_all_hidden_state
