@@ -53,6 +53,7 @@ rewarding_score = [{{'name': criteria1, 'score': score1, 'description': descript
                     ...]
 
 Avoid using normal text; format your response strictly as specified above.
+Avoid using token " ' " in your description content because it causes error.
 ----------------------------------------------------------------------------------------------------------
 User's request: "{prompt}"
 
