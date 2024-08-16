@@ -48,12 +48,11 @@ The responder's answer is formatted as:
 {answer_format}
 
 After determining your answer, structure them in this format:
-rewarding_score = [{{'name': criteria1, 'score': score1, 'description': description1}}, 
-                    {{'name': criteria2, 'score': score2, 'description': description2}},
+rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
+                    {{"name": criteria2, "score": score2, "description": description2}},
                     ...]
 
 Avoid using normal text; format your response strictly as specified above.
-Avoid using token " ' " in your description content because it causes error.
 ----------------------------------------------------------------------------------------------------------
 User's request: "{prompt}"
 

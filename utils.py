@@ -40,45 +40,65 @@ def generate_reward_score_from_api(prompt):
     )
     return response.choices[0].message.content
 
-def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_state, beta=0.2):
+def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_state):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    reward_score = 0.0
     # Caculate the average rewarding score 
     for item in rewarding_score:
         reward_score = item['score']
         print(f"item: {item},reward_score: {reward_score}")
-    reward_score = torch.tensor(reward_score / (10 * len(rewarding_score))) 
+    reward_score = torch.tensor(reward_score / (10 * len(rewarding_score))).to(device)
     
     print(f"final score: {reward_score}")
 
-    # KL diverage loss
+    # KL diverage 
     kl_loss = nn.KLDivLoss(reduction="batchmean")
-    kl_loss_sum = torch.tensor(0)
+    kl_loss_sum = torch.tensor(0.0).to(device)
 
-    # Move tensors to the appropriate device (e.g., GPU if available)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    reward_score.to(device)
-    kl_loss_sum.to(device)
+    # Softmax
+    softmax = nn.Softmax(dim=-1)
 
     if (len(last_hidden_state) >= len(base_last_hidden_state)):
         number_of_pairs = torch.tensor(len(last_hidden_state)).to(device)
         for i, item in enumerate(last_hidden_state):
             if (i < len(base_last_hidden_state)):
-                kl_loss_sum += kl_loss(item, base_last_hidden_state[i])
+                
+                # Caculate distribution on last_hidden_state and base_last_hidden_state
+                agent_distribution = softmax(item)
+                base_distrbution = softmax(base_last_hidden_state[i])
+
+                kl_loss_sum += kl_loss(agent_distribution.to(device), base_distrbution.to(device))
             else:
-                padding_token = torch.zeros(1, 1, 4096)
-                kl_loss_sum += kl_loss(item, padding_token)
+                # Caculate distribution on last_hidden_state 
+                agent_distribution = softmax(item)
+
+                padding_token = torch.zeros(1, 1, 4096).to(device)
+                kl_loss_sum += kl_loss(item.to(device), padding_token.to(device))
+                # ------------------------------------------------
     else:
         number_of_pairs = torch.tensor(len(base_last_hidden_state)).to(device)
         for i, item in enumerate(base_last_hidden_state):
             if (i < len(last_hidden_state)):
-                kl_loss_sum += kl_loss(last_hidden_state[i], item)
+                # Caculate distribution on last_hidden_state and base_last_hidden_state
+                agent_distribution = softmax(last_hidden_state[i])
+                base_distrbution = softmax(item)
+
+                kl_loss_sum += kl_loss(agent_distribution.to(device), base_distrbution.to(device))
             else:
-                padding_token = torch.zeros(1, 1, 4096)
-                kl_loss_sum += kl_loss(padding_token, item)
+                # Caculate distribution on base_last_hidden_state 
+                base_distrbution = softmax(item)
+
+                padding_token = torch.zeros(1, 1, 4096).to(device)
+                kl_loss_sum += kl_loss(padding_token.to(device), item.to(device))
     
     kl_loss_average = kl_loss_sum / number_of_pairs
 
     print(f"kl_loss_average: {kl_loss_average}")
 
+    beta = torch.tensor(0.2).to(device)
+
     total_loss = (1 - beta) * reward_score + beta * kl_loss_average
+    print(f"total_loss: {total_loss}")
+    
     return total_loss
