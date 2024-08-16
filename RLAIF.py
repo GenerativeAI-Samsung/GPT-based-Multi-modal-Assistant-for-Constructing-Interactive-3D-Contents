@@ -1,4 +1,8 @@
+import json
+import random
+
 import torch
+import torch.optim as optim
 import transformers
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
@@ -111,6 +115,115 @@ def running_step5(tokenizer, model, criteria, user_request):
     _, step5_base_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=base_model, prompt=step5_prompt, setting="base_model")
     rewarding_prompt = prompt_reward(criteria=criteria, answer_format=step5_answer_format, prompt=step5_prompt, response=step5_response)
     return rewarding_prompt, step5_last_hidden_state, step5_base_last_hidden_state
+
+def save_model(model, diretory="/content/adapter_folder"):
+    model.save_pretrained(diretory)
+    print('saving model...')
+
+def train(tokenizer, 
+          model, 
+          base_model, 
+          criterias, 
+          running_step,
+          train_data_path,
+          num_epoch, 
+          batch_size,
+          learning_rate,
+          shuffle=True):
+    
+    # train_data_path is a .json file contains a list where each item is a user's request
+    # load train_data
+    # Open json file
+    print("Loading data...")
+    f = open(train_data_path)
+
+    # load json object
+    train_data = json.load(f)
+
+    # Load history .json
+    print("Loading history file...")
+    f = open(train_data_path)
+
+    optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
+    
+    print("Start training...")
+    for epoch in range(num_epoch):
+
+        # Shuffle index data list
+        if (shuffle == True):
+            index_list = [i for i in range(len(train_data))]
+            index_list = random.shuffle(index_list)
+        else:
+            index_list = [i for i in range(len(train_data))]
+        
+        num_batch = len(train_data) % batch_size
+        for i in range(num_batch):
+            optimizer.zero_grad()
+
+            batch_data = []
+            for j in range(j * i, j * i + batch_size):
+                batch_data.append(train_data[j])
+
+            # Get response from Llama3 and feedback from GPT-4
+            custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
+            exec(custom_run)
+
+            score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
+            exec(score_response)
+
+            # Caculate loss 
+            loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+
+            loss_value.backward()
+            optimizer.step()
+
+            print(f"epoch: {epoch}, batch: {i}")
+        evaluate_loss = evaluate(tokenizer=tokenizer, model=model, base_model=base_model, criterias=criterias, running_step=running_step, evaluate_data_path='/content/evalue_data', batch_size=4)
+
+    
+    # Save model
+    save_model(model)
+
+def evaluate(tokenizer, 
+          model, 
+          base_model, 
+          criterias, 
+          running_step,
+          evaluate_data_path, 
+          batch_size):
+
+    # Load evaluate data    
+    # Open json file
+    print("Loading data...")
+    f = open(evaluate_data_path)
+
+    # load json object
+    evaluate_data = json.load(f)
+
+    print("Start evaluate...")
+    
+    final_loss = 0
+
+    num_batch = len(evaluate_data) % batch_size
+    for i in range(num_batch):
+        batch_data = []
+        for j in range(j * i, j * i + batch_size):
+            batch_data.append(evaluate_data[j])
+
+        # Get response from Llama3 and feedback from GPT-4
+        custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
+        exec(custom_run)
+
+        score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
+        exec(score_response)
+
+        # Caculate loss 
+        loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+
+        final_loss += loss_value
+    
+    final_loss = final_loss / num_batch
+    return final_loss
 
 if __name__ == '__main__':
     # Interface
@@ -270,43 +383,57 @@ if __name__ == '__main__':
         base_model=base_model
     )
 
+    if (setting_option == '1' or setting_option == '2'):
+        train(tokenizer=tokenizer, 
+              model=peft_model, 
+              base_model=base_model, 
+              criterias=working_criteria, 
+              running_step=running_step,
+              train_data_path='/content/train_data',
+              history_path = '/content/history',
+              num_epoch=5,
+              batch_size=4,
+              learning_rate=1e-7,
+              shuffle=True)
+    elif (setting_option == '3'):
+        evaluate()
 
     # Test
-    user_request = """
-To create a 3D scene for the text "A girl plays with her dog in the garden," we can use the following details:
+#     user_request = """
+# To create a 3D scene for the text "A girl plays with her dog in the garden," we can use the following details:
 
-    The Setting:
-        The scene takes place in a garden, which includes a grassy field.
-        Consider adding elements to make it look like a children's playground.
+#     The Setting:
+#         The scene takes place in a garden, which includes a grassy field.
+#         Consider adding elements to make it look like a children's playground.
 
-    The Girl:
-        She is young, possibly a little girl or a pre-teen.
-        She is wearing a yellow sweater, a dress, and a pair of high heels.
-        Her clothing is mostly bright and colorful.
+#     The Girl:
+#         She is young, possibly a little girl or a pre-teen.
+#         She is wearing a yellow sweater, a dress, and a pair of high heels.
+#         Her clothing is mostly bright and colorful.
 
-    The Dog:
-        The dog is medium-sized.
-        The dog can be portrayed standing or interacting with the girl.
+#     The Dog:
+#         The dog is medium-sized.
+#         The dog can be portrayed standing or interacting with the girl.
 
-    Interaction:
-        The girl is playing with the dog, so they should be interacting with each other in a playful manner.
+#     Interaction:
+#         The girl is playing with the dog, so they should be interacting with each other in a playful manner.
 
-Based on these details, you can imagine a vibrant and joyful scene. 
-The girl, dressed in her colorful outfit, is happily playing with her medium-sized dog in a lush, green garden. 
-The garden might include elements of a playground to enhance the playful atmosphere.
-"""
+# Based on these details, you can imagine a vibrant and joyful scene. 
+# The girl, dressed in her colorful outfit, is happily playing with her medium-sized dog in a lush, green garden. 
+# The garden might include elements of a playground to enhance the playful atmosphere.
+# """
     
-    # Get response from Llama3 and feedback from GPT-4
-    custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=peft_model, base_model=base_model, criteria=working_criteria, user_request=user_request)"
-    exec(custom_run)
+#     # Get response from Llama3 and feedback from GPT-4
+#     custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=peft_model, base_model=base_model, criteria=working_criteria, user_request=user_request)"
+#     exec(custom_run)
 
-    score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
-    exec(score_response)
+#     score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
+#     exec(score_response)
 
-    loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+#     loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
 
-    print(f"reward_prompt: {rewarding_prompt}")
-    print("\n--------------------------------------------------------------\n")
-    print(f"rewarding_score: {rewarding_score}")
-    print("\n--------------------------------------------------------------\n")
-    print(f"loss_value: {loss_value}")
+#     print(f"reward_prompt: {rewarding_prompt}")
+#     print("\n--------------------------------------------------------------\n")
+#     print(f"rewarding_score: {rewarding_score}")
+#     print("\n--------------------------------------------------------------\n")
+#     print(f"loss_value: {loss_value}")

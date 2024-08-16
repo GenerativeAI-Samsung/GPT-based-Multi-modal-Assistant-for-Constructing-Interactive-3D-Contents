@@ -36,11 +36,26 @@ def interact_with_lm(tokenizer, model, prompt, setting):
 
 def generate_reward_score_from_api(prompt):
     client = Client()
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+
+    list_model = ['gpt-4',
+              'gpt-4-turbo',
+              'gpt-4o',
+              'nemotron-4-340b-instruct',
+              'meta-llama/Meta-Llama-3.1-405B-Instruct-FP8',
+              'meta-llama/Meta-Llama-3-70B-Instruct',
+              'meta/meta-llama-3-70b-instruct',
+              'meta-llama/Llama-3-70b-chat-hf',
+              'meta-llama/Meta-Llama-3.1-70B-Instruct']
+
+    for model_id in list_model:
+        try:
+            response = client.chat.completions.create(
+                model=model_id,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message.content
+        except:
+            continue
 
 def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_state):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -87,7 +102,7 @@ def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_stat
                 base_distrbution = F.log_softmax(item, dim=-1)
 
                 padding_distribution = F.log_softmax(torch.randn(1, 1, 4096), dim=-1)
-                kl_loss_sum += kl_loss(padding_distribution.to(device), item.to(device))
+                kl_loss_sum += kl_loss(padding_distribution.to(device), base_distrbution.to(device))
     
     kl_loss_average = kl_loss_sum / number_of_pairs
 
