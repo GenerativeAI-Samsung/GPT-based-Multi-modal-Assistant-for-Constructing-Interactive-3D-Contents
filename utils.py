@@ -57,7 +57,7 @@ def generate_reward_score_from_api(prompt):
         except:
             continue
 
-def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_state):
+def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_state, beta=0.2):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     reward_score = 0.0
@@ -108,7 +108,7 @@ def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_stat
 
     print(f"kl_loss_average: {kl_loss_average}")
 
-    beta = torch.tensor(0.2).to(device)
+    beta = torch.tensor(beta).to(device)
 
     total_loss = (1 - beta) * reward_score - beta * kl_loss_average
     print(f"total_loss: {total_loss}")
