@@ -116,7 +116,8 @@ def running_step5(tokenizer, model, criteria, user_request):
     rewarding_prompt = prompt_reward(criteria=criteria, answer_format=step5_answer_format, prompt=step5_prompt, response=step5_response)
     return rewarding_prompt, step5_last_hidden_state, step5_base_last_hidden_state
 
-def save_model(model, diretory="/content/adapter_folder"):
+def save_model(model, running_step):
+    diretory=f"/content/adapter_folder/step{running_step}"
     model.save_pretrained(diretory)
     print('saving model...')
 
@@ -169,7 +170,18 @@ def train(tokenizer,
 
                 batch_data = []
                 for j in range(j * i, j * i + batch_size):
-                    batch_data.append(train_data[j])
+                    if (int(running_step) == 1):
+                        batch_data.append(train_data[j]['respone'])
+                    # TODO ------------------------------------------------
+                    elif (int(running_step) == 2):
+                        pass
+                    elif (int(running_step) == 3):
+                        pass
+                    elif (int(running_step) == 4):
+                        pass
+                    elif (int(running_step) == 5):
+                        pass
+                    # ------------------------------------------------
 
                 # Get response from Llama3 and feedback from GPT-4
                 custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
@@ -226,18 +238,18 @@ def train(tokenizer,
                 history["validation_loss"].append(total_loss / total_batch) 
     except:
         print("Got error! Saving model and history...")
-        save_model(model)
+        save_model(model, running_step=running_step)
 
         json_object = json.dumps(history, indent=4)
-        with open("/content/history.json", "w") as outfile:
+        with open('/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/history.json', "w") as outfile:
             outfile.write(json_object)
         return None
     
     print("Finish! Saving model...")
-    save_model(model)
+    save_model(model, running_step=running_step)
 
     json_object = json.dumps(history, indent=4)
-    with open("/content/history.json", "w") as outfile:
+    with open('/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/history.json', "w") as outfile:
         outfile.write(json_object)
 
 def evaluate(tokenizer, 
@@ -309,6 +321,11 @@ if __name__ == '__main__':
     DEFAULT_EOS_TOKEN = "</s>"
     DEFAULT_BOS_TOKEN = "<s>"
     DEFAULT_UNK_TOKEN = "<unk>"
+
+    HISTORY_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/history.json'
+    TRAIN_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/train_examples.json'
+    TEST_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/test_examples.json'
+    EVALUATE_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/evaluate_examples.json'
 
     step1_criteria = [
         {'name': 'Accuracy',
@@ -448,7 +465,7 @@ if __name__ == '__main__':
         if (setting_option == '1'):
             history = {"num_epoch": 0, "loss": [], "validation_loss": []}
         elif (setting_option == '2'):
-            with open('history.json', 'r') as openfile:
+            with open(HISTORY_PATH, 'r') as openfile:
                history = json.load(openfile)
 
         train(tokenizer=tokenizer, 
@@ -456,8 +473,8 @@ if __name__ == '__main__':
               base_model=base_model, 
               criterias=working_criteria, 
               running_step=running_step,
-              train_data_path='/content/train_data',
-              test_data_path='/content/test_data',
+              train_data_path=TRAIN_DATA_PATH,
+              test_data_path=TEST_DATA_PATH,
               history = history,
               num_epoch=5,
               batch_size=4,
@@ -469,7 +486,7 @@ if __name__ == '__main__':
           base_model=base_model, 
           criterias=working_criteria, 
           running_step=running_step,
-          evaluate_data_path='/content/evaluate_data_path')
+          evaluate_data_path=EVALUATE_DATA_PATH)
 
     # Test
 #     user_request = """
