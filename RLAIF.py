@@ -126,71 +126,126 @@ def train(tokenizer,
           criterias, 
           running_step,
           train_data_path,
+          test_data_path,
+          history,
           num_epoch, 
           batch_size,
           learning_rate,
           shuffle=True):
     
-    # train_data_path is a .json file contains a list where each item is a user's request
+    # train_data_path and test_data_path is a .json file contains a list where each item is a user's request
     # load train_data
-    # Open json file
-    print("Loading data...")
+    print("Loading train data...")
     f = open(train_data_path)
-
-    # load json object
     train_data = json.load(f)
 
-    # Load history .json
-    print("Loading history file...")
-    f = open(train_data_path)
+    # load test_data
+    print("Loading test data...")
+    f = open(test_data_path)
+    test_data = json.load(f)
 
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
     
     print("Start training...")
-    for epoch in range(num_epoch):
+    try: 
+        for epoch in range(num_epoch):
+            print(f"epoch: {epoch}")
 
-        # Shuffle index data list
-        if (shuffle == True):
-            index_list = [i for i in range(len(train_data))]
-            index_list = random.shuffle(index_list)
-        else:
-            index_list = [i for i in range(len(train_data))]
+            # Tracking training history
+            history["num_epoch"] += 1
+            total_loss = 0
+            total_batch = 0
+
+            # Shuffle index data list
+            if (shuffle == True):
+                index_list = [i for i in range(len(train_data))]
+                index_list = random.shuffle(index_list)
+            else:
+                index_list = [i for i in range(len(train_data))]
+            
+            num_batch = len(train_data) % batch_size
+            for i in range(num_batch):
+                optimizer.zero_grad()
+
+                batch_data = []
+                for j in range(j * i, j * i + batch_size):
+                    batch_data.append(train_data[j])
+
+                # Get response from Llama3 and feedback from GPT-4
+                custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
+                exec(custom_run)
+
+                score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
+                exec(score_response)
+
+                # Caculate loss 
+                loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+
+                # Tracking training history
+                total_loss += 1
+                total_batch += loss_value
+
+                loss_value.backward()
+                optimizer.step()
+
+                print(f"\tepoch: {epoch}, batch: {i}")
+
+            # Add average loss to history
+            history["loss"].append(total_loss / total_batch)    
         
-        num_batch = len(train_data) % batch_size
-        for i in range(num_batch):
-            optimizer.zero_grad()
+            # Test model with test data
 
-            batch_data = []
-            for j in range(j * i, j * i + batch_size):
-                batch_data.append(train_data[j])
+            # Tracking test history
+            total_loss = 0
+            total_batch = 0
 
-            # Get response from Llama3 and feedback from GPT-4
-            custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
-            exec(custom_run)
+            num_batch = len(test_data)
+            with torch.no_grad():
+                for i in range(num_batch):
 
-            score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
-            exec(score_response)
+                    batch_data = []
+                    for j in range(j * i, j * i + 1):
+                        batch_data.append(test_data[i])
 
-            # Caculate loss 
-            loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+                    # Get response from Llama3 and feedback from GPT-4
+                    custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
+                    exec(custom_run)
 
-            loss_value.backward()
-            optimizer.step()
+                    score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
+                    exec(score_response)
 
-            print(f"epoch: {epoch}, batch: {i}")
-        evaluate_loss = evaluate(tokenizer=tokenizer, model=model, base_model=base_model, criterias=criterias, running_step=running_step, evaluate_data_path='/content/evalue_data', batch_size=4)
+                    # Caculate loss 
+                    loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
 
+                    # Tracking training history
+                    total_loss += 1
+                    total_batch += loss_value
+
+                    print(f"\tepoch: {epoch}, batch: {i}")
+                # Add average loss to history
+                history["validation_loss"].append(total_loss / total_batch) 
+    except:
+        print("Got error! Saving model and history...")
+        save_model(model)
+
+        json_object = json.dumps(history, indent=4)
+        with open("/content/history.json", "w") as outfile:
+            outfile.write(json_object)
+        return None
     
-    # Save model
+    print("Finish! Saving model...")
     save_model(model)
+
+    json_object = json.dumps(history, indent=4)
+    with open("/content/history.json", "w") as outfile:
+        outfile.write(json_object)
 
 def evaluate(tokenizer, 
           model, 
           base_model, 
           criterias, 
           running_step,
-          evaluate_data_path, 
-          batch_size):
+          evaluate_data_path):
 
     # Load evaluate data    
     # Open json file
@@ -202,29 +257,35 @@ def evaluate(tokenizer,
 
     print("Start evaluate...")
     
-    final_loss = 0
+    # Tracking evaluate history
+    total_loss = 0
+    total_batch = 0
+    average_score = 0
 
-    num_batch = len(evaluate_data) % batch_size
-    for i in range(num_batch):
-        batch_data = []
-        for j in range(j * i, j * i + batch_size):
-            batch_data.append(evaluate_data[j])
+    num_batch = len(evaluate_data)
+    with torch.no_grad():
+        for i in range(num_batch):
+            batch_data = []
+            for j in range(j * i, j * i + 1):
+                batch_data.append(evaluate_data[j])
 
-        # Get response from Llama3 and feedback from GPT-4
-        custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
-        exec(custom_run)
+            # Get response from Llama3 and feedback from GPT-4
+            custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
+            exec(custom_run)
 
-        score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
-        exec(score_response)
+            score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
+            exec(score_response)
 
-        # Caculate loss 
-        loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+            # Caculate loss (beta=0)
+            loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, beta=0)
 
-        final_loss += loss_value
-    
-    final_loss = final_loss / num_batch
-    return final_loss
+            # Tracking evaluate history
+            total_loss += loss_value
+            total_batch += 1
 
+    average_score = total_loss / total_batch
+    print(f"Average score: {average_score}")
+    return None
 if __name__ == '__main__':
     # Interface
     print('Please choose which step you want to work with:\n')
@@ -384,19 +445,31 @@ if __name__ == '__main__':
     )
 
     if (setting_option == '1' or setting_option == '2'):
+        if (setting_option == '1'):
+            history = {"num_epoch": 0, "loss": [], "validation_loss": []}
+        elif (setting_option == '2'):
+            with open('history.json', 'r') as openfile:
+               history = json.load(openfile)
+
         train(tokenizer=tokenizer, 
               model=peft_model, 
               base_model=base_model, 
               criterias=working_criteria, 
               running_step=running_step,
               train_data_path='/content/train_data',
-              history_path = '/content/history',
+              test_data_path='/content/test_data',
+              history = history,
               num_epoch=5,
               batch_size=4,
-              learning_rate=1e-7,
+              learning_rate=1e-8,
               shuffle=True)
     elif (setting_option == '3'):
-        evaluate()
+        evaluate(tokenizer=tokenizer, 
+          model=peft_model, 
+          base_model=base_model, 
+          criterias=working_criteria, 
+          running_step=running_step,
+          evaluate_data_path='/content/evaluate_data_path')
 
     # Test
 #     user_request = """
