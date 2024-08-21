@@ -34,6 +34,8 @@ def interact_with_lm(tokenizer, model, prompt, setting):
             outputs = model.generate(**inputs, max_length=4096, output_hidden_states=True, return_dict_in_generate=True)
 
     # Extract last hidden state
+    # Last hidden state is a tuple of sequence_length. 
+    #   Each items is a tensor of [batch_size, feature, hidden_dim]
     if hasattr(outputs, 'decoder_hidden_states'):
         last_hidden_state = outputs.decoder_hidden_states[-1]
     else:
@@ -45,6 +47,8 @@ def interact_with_lm(tokenizer, model, prompt, setting):
     return decoded_outputs, last_hidden_state
 
 def generate_reward_score_from_api(prompt):
+    
+    score_lists = []
     client = Client()
 
     list_model = ['gpt-4',
@@ -56,71 +60,68 @@ def generate_reward_score_from_api(prompt):
               'meta/meta-llama-3-70b-instruct',
               'meta-llama/Llama-3-70b-chat-hf',
               'meta-llama/Meta-Llama-3.1-70B-Instruct']
-
-    for model_id in list_model:
-        try:
-            response = client.chat.completions.create(
-                model=model_id,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message.content
-        except:
-            continue
-
-def RLAIF_loss_fuction(rewarding_score, last_hidden_state, base_last_hidden_state, beta=0.2):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    reward_score = 0.0
+    for prom in prompt: 
+        for model_id in list_model:
+            try:
+                response = client.chat.completions.create(
+                    model=model_id,
+                    messages=[{"role": "user", "content": prom}]
+                )
+                score_lists.append(response.choices[0].message.content)
+            except:
+                continue
+    return score_lists
+
+def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state, batch_size, beta=0.2):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    reward_score = []
     # Caculate the average rewarding score 
-    for item in rewarding_score:
-        reward_score += item['score']
-        print(f"item: {item},reward_score: {reward_score}")
-    reward_score = torch.tensor(reward_score / (10 * len(rewarding_score))).to(device)
+    for item in score_response:
+        exec(item)
+        for reward_item in rewarding_score:
+            reward_score += item['score']
+            print(f"item: {item},reward_score: {reward_score}")
+        reward_score.append(torch.tensor(reward_score / (10 * len(rewarding_score))))
+
+    reward_score = torch.stack(reward_score, dim=0).to(device)
     
     print(f"final score: {reward_score}")
 
     # KL diverage 
-    kl_loss = nn.KLDivLoss(reduction="batchmean", log_target=True)
+    kl_loss = nn.KLDivLoss(reduction="none", log_target=True)
     kl_loss_sum = torch.tensor(0.0).to(device)
 
-    if (len(last_hidden_state) >= len(base_last_hidden_state)):
-        number_of_pairs = torch.tensor(len(last_hidden_state)).to(device)
-        for i, item in enumerate(last_hidden_state):
-            if (i < len(base_last_hidden_state)):
-                # Caculate log distribution on last_hidden_state and base_last_hidden_state
-                agent_log_distribution = F.log_softmax(item, dim=-1)
-                base_log_distribution = F.log_softmax(base_last_hidden_state[i], dim=-1)
+    # Stack both last_hidden_state
+    last_hidden_state = torch.stack(list(last_hidden_state)).to(device)
+    base_last_hidden_state = torch.stack(list(base_last_hidden_state)).to(device)
 
-                kl_loss_sum += kl_loss(agent_log_distribution.to(device), base_log_distribution.to(device))
-            else:
-                # Caculate log distribution on last_hidden_state 
-                agent_log_distribution = F.log_softmax(item, dim=-1)
+    # then transpose
+    last_hidden_state = torch.transpose(last_hidden_state, 0, 1)
+    base_last_hidden_state = torch.transpose(base_last_hidden_state, 0, 1)
 
-                padding_distribution = F.log_softmax(torch.randn(1, 1, 4096), dim=-1)
-                kl_loss_sum += kl_loss(item.to(device), padding_distribution.to(device))
-    else:
-        number_of_pairs = torch.tensor(len(base_last_hidden_state)).to(device)
-        for i, item in enumerate(base_last_hidden_state):
-            if (i < len(last_hidden_state)):
-                # Caculate distribution on last_hidden_state and base_last_hidden_state
-                agent_log_distribution = F.log_softmax(last_hidden_state[i], dim=-1)
-                base_log_distribution = F.log_softmax(item, dim=-1)
-
-                kl_loss_sum += kl_loss(agent_log_distribution.to(device), base_log_distribution.to(device))
-            else:
-                # Caculate distribution on base_last_hidden_state 
-                base_distrbution = F.log_softmax(item, dim=-1)
-
-                padding_distribution = F.log_softmax(torch.randn(1, 1, 4096), dim=-1)
-                kl_loss_sum += kl_loss(padding_distribution.to(device), base_distrbution.to(device))
+    # Add padding if two hidden state is not in same length
+    padding = torch.zeros(4, 1, 1, 4096)
+    if (last_hidden_state.shape[1] < base_last_hidden_state.shape[1]):
+        last_hidden_state = torch.cat((last_hidden_state, padding), 1)
+    elif (last_hidden_state.shape[1] > base_last_hidden_state.shape[1]):
+        base_last_hidden_state = torch.cat((base_last_hidden_state, padding), 1)
     
-    kl_loss_average = kl_loss_sum / number_of_pairs
+    # Caculate distribution on last_hidden_state and base_last_hidden_state
+    agent_log_distribution = F.log_softmax(last_hidden_state, dim=-1)
+    base_log_distribution = F.log_softmax(item, dim=-1)
+    
+    kl_loss_value = kl_loss(agent_log_distribution.to(device), base_log_distribution.to(device))
+
+    kl_loss_average = torch.squeeze(kl_loss_value, dim=-2).mean(dim=-1).mean(dim=-1)
 
     print(f"kl_loss_average: {kl_loss_average}")
 
     beta = torch.tensor(beta).to(device)
 
     total_loss = (1 - beta) * reward_score - beta * kl_loss_average
+    total_loss = total_loss.mean() 
     print(f"total_loss: {total_loss}")
 
     return total_loss

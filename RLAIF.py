@@ -42,27 +42,31 @@ def smart_tokenizer_and_embedding_resize(
         output_embeddings[-num_new_tokens:] = output_embeddings_avg
 
 def prompt_reward(criteria, answer_format, prompt, response):
-    formatted_criteria = "".join(f"\t-{item['name']}: {item['description']}\n" for item in criteria)
-    rewarding_prompt = f"""
-You are an evaluator. Your task is to grade the response provided by the responder to the user's request based on specific criteria, using a 100-point scale.
-The criteria include:
-{formatted_criteria}
 
-The responder's answer is formatted as:
-{answer_format}
+    rewarding_prompts = []
+    for prom, res in zip(prompt, response):
+        formatted_criteria = "".join(f"\t-{item['name']}: {item['description']}\n" for item in criteria)
+        rewarding_prompt = f"""
+    You are an evaluator. Your task is to grade the response provided by the responder to the user's request based on specific criteria, using a 100-point scale.
+    The criteria include:
+    {formatted_criteria}
 
-After determining your answer, structure them in this format:
-rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
-                    {{"name": criteria2, "score": score2, "description": description2}},
-                    ...]
+    The responder's answer is formatted as:
+    {answer_format}
 
-Avoid using normal text; format your response strictly as specified above.
-----------------------------------------------------------------------------------------------------------
-User's request: "{prompt}"
+    After determining your answer, structure them in this format:
+    rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
+                        {{"name": criteria2, "score": score2, "description": description2}},
+                        ...]
 
-Responder's answer: {response}
-"""
-    return rewarding_prompt
+    Avoid using normal text; format your response strictly as specified above.
+    ----------------------------------------------------------------------------------------------------------
+    User's request: "{prom}"
+
+    Responder's answer: {res}
+    """
+        rewarding_prompts.append(rewarding_prompt)
+    return rewarding_prompts
 
 def running_step1(tokenizer, model, base_model, criteria, user_request):
     step1_answer_format, step1_prompt, step1_response, step1_last_hidden_state = step1(tokenizer=tokenizer, model=model, user_request=user_request)
@@ -191,7 +195,7 @@ def train(tokenizer,
                 exec(score_response)
 
                 # Caculate loss 
-                loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+                loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
 
                 # Tracking training history
                 total_loss += 1
@@ -224,10 +228,9 @@ def train(tokenizer,
                     exec(custom_run)
 
                     score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
-                    exec(score_response)
 
                     # Caculate loss 
-                    loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+                    loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, batch_size=batch_size)
 
                     # Tracking training history
                     total_loss += 1
@@ -290,10 +293,9 @@ def evaluate(tokenizer,
             exec(custom_run)
 
             score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
-            exec(score_response)
 
             # Caculate loss (beta=0)
-            loss_value = RLAIF_loss_fuction(rewarding_score=rewarding_score, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, beta=0)
+            loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, beta=0)
 
             # Tracking evaluate history
             total_loss += loss_value

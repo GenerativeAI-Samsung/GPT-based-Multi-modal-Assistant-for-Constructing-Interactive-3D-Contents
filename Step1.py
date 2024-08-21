@@ -33,4 +33,4 @@ Each asset is described with a concise name (x) and a detailed visual descriptio
     
     step1_response = split_answer_from_respone(respone=step1_response)
 
-    return step1_answer_format, step1_prompt, step1_response, step1_last_hidden_state
+    return step1_answer_format, step1_prompts, step1_response, step1_last_hidden_state
