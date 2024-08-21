@@ -169,7 +169,7 @@ def train(tokenizer,
                 optimizer.zero_grad()
 
                 batch_data = []
-                for j in range(j * i, j * i + batch_size):
+                for j in range(i * batch_size, (i + 1)*batch_size):
                     if (int(running_step) == 1):
                         batch_data.append(train_data[j]['respone'])
                     # TODO ------------------------------------------------
@@ -216,7 +216,7 @@ def train(tokenizer,
                 for i in range(num_batch):
 
                     batch_data = []
-                    for j in range(j * i, j * i + 1):
+                    for j in range(i * batch_size, (i + 1)*batch_size):
                         batch_data.append(test_data[i])
 
                     # Get response from Llama3 and feedback from GPT-4
@@ -243,7 +243,8 @@ def train(tokenizer,
         json_object = json.dumps(history, indent=4)
         with open('/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/history.json', "w") as outfile:
             outfile.write(json_object)
-        return None
+        print("DONE!")
+        return 0
     
     print("Finish! Saving model...")
     save_model(model, running_step=running_step)
@@ -251,6 +252,9 @@ def train(tokenizer,
     json_object = json.dumps(history, indent=4)
     with open('/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/history.json', "w") as outfile:
         outfile.write(json_object)
+    print("DONE!")
+    return 0
+
 
 def evaluate(tokenizer, 
           model, 
@@ -435,13 +439,12 @@ if __name__ == '__main__':
                 is_trainable=False)
     
     # Loading tokenizer
-    # model_max_length = 512 by default
+    # model_max_length = 4096 by default
     tokenizer = AutoTokenizer.from_pretrained(
         MODEL_ID,
-        model_max_length=512,
+        model_max_length=4096,
         padding_side="right",
-        use_fast=False,
-    )
+        use_fast=False)
 
     # Adding special token to tokenizer
     special_tokens_dict = dict()

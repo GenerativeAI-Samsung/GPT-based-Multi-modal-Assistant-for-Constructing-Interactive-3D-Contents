@@ -5,12 +5,22 @@ import torch.nn.functional as F
 from g4f.client import Client
 
 def split_answer_from_respone(respone):
-    answer = respone.split('Respone:')
-    return answer[1]
+    list_answer = []
+    for res in respone:
+        answer1 = res.split('Respone:')[1]
+        if ('object_list = [' in answer1):
+            answer2 = answer1.split('object_list = [')[1]
+            answer3 = answer2.split(']')[0]
+            final_answer = 'object_list = [' + answer3 + ']'
+            list_answer.append(final_answer)
+        else:
+            list_answer.append("object_list = []")
+    return list_answer
 
 def interact_with_lm(tokenizer, model, prompt, setting):
     # Tokenize the input prompt
-    inputs = tokenizer(prompt, return_tensors="pt")
+    inputs = tokenizer(prompt, return_tensors="pt", padding=True)
+    print(f"len(prompt): {len(prompt)}")
 
     # Move tensors to the appropriate device (e.g., GPU if available)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -27,12 +37,12 @@ def interact_with_lm(tokenizer, model, prompt, setting):
     if hasattr(outputs, 'decoder_hidden_states'):
         last_hidden_state = outputs.decoder_hidden_states[-1]
     else:
-        last_hidden_state= outputs.hidden_states[-1]
+        last_hidden_state = outputs.hidden_states[-1]
 
     # Decode the generated tokens back to text
-    outputs = tokenizer.decode(outputs.sequences[0], skip_special_tokens=True)
+    decoded_outputs = [tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
     
-    return outputs, last_hidden_state
+    return decoded_outputs, last_hidden_state
 
 def generate_reward_score_from_api(prompt):
     client = Client()
