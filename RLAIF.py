@@ -63,7 +63,7 @@ def prompt_reward(criteria, answer_format, prompt, response):
     ----------------------------------------------------------------------------------------------------------
     User's request: "{prom}"
 
-    Responder's answer: {res}
+    Responder's answer: "{res}"
     """
         rewarding_prompts.append(rewarding_prompt)
     return rewarding_prompts
@@ -188,14 +188,13 @@ def train(tokenizer,
                     # ------------------------------------------------
 
                 # Get response from Llama3 and feedback from GPT-4
-                custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
-                exec(custom_run)
+                if (int(running_step) == 1):
+                    rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step1(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)
 
                 score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
-                exec(score_response)
 
                 # Caculate loss 
-                loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state)
+                loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, batch_size=batch_size)
 
                 # Tracking training history
                 total_loss += 1

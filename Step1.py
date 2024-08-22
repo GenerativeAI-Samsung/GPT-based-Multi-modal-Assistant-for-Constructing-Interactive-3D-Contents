@@ -24,7 +24,7 @@ Each asset is described with a concise name (x) and a detailed visual descriptio
 
     Avoid using normal text; format your response strictly as specified above.
 
-    Natural language description: {request} 
+    Natural language description: "{request}"
     """
         step1_prompt += "\nRespone:" 
         step1_prompts.append(step1_prompt)
