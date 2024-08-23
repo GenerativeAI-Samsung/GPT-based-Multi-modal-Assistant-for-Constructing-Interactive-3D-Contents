@@ -201,7 +201,10 @@ def train(tokenizer,
             if (int(running_step) == 1):
                 rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step1(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)
 
-            score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
+            score_response = asyncio.run(generate_reward_score_from_api(prompt=rewarding_prompt))
+            
+            for res in score_response:
+                print(res)
 
             # Caculate loss 
             loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, batch_size=batch_size)
@@ -241,7 +244,7 @@ def train(tokenizer,
 
                 for res in score_response:
                     print(res)
-                    
+
                 # Caculate loss 
                 loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, batch_size=batch_size)
 
