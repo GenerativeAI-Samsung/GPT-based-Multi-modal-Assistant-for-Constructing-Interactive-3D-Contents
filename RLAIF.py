@@ -64,6 +64,13 @@ def prompt_reward(criteria, answer_format, prompt, response):
                         ...]
 
     Avoid using normal text; format your response strictly as specified above.
+    -------------------------------------------------------------------------
+    YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
+    REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+    rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
+                        {{"name": criteria2, "score": score2, "description": description2}},
+                        ...]
+    ------------------------------------------------------------------------
     """
         rewarding_prompts.append(rewarding_prompt)
     return rewarding_prompts
@@ -164,7 +171,7 @@ def train(tokenizer,
             # Shuffle index data list
             if (shuffle == True):
                 index_list = [i for i in range(len(train_data))]
-                index_list = random.shuffle(index_list)
+                random.shuffle(index_list)
             else:
                 index_list = [i for i in range(len(train_data))]
             
@@ -175,7 +182,7 @@ def train(tokenizer,
                 batch_data = []
                 for j in range(i * batch_size, (i + 1)*batch_size):
                     if (int(running_step) == 1):
-                        batch_data.append(train_data[j]['respone'])
+                        batch_data.append(train_data[index_list[j]]['respone'])
                     # TODO ------------------------------------------------
                     elif (int(running_step) == 2):
                         pass

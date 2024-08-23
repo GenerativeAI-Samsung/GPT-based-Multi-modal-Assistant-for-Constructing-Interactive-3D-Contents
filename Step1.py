@@ -27,6 +27,13 @@ Each asset is described with a concise name (x) and a detailed visual descriptio
 
     Avoid using normal text; format your response strictly as specified above.
     """
+        step1_prompt += f"""
+    -------------------------------------------------------------------------
+    YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
+    REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+    {step1_answer_format}
+    ------------------------------------------------------------------------
+"""
         step1_prompt += "\nRespone:" 
         step1_prompts.append(step1_prompt)
     
