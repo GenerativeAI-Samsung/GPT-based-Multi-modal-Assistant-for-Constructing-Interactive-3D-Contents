@@ -19,12 +19,13 @@ Each asset is described with a concise name (x) and a detailed visual descriptio
         step1_prompt = f"""
     You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
     Your job is to list the assets individually, ensuring each is a single unit (avoiding composite sets). 
+
+    Natural language description: "{request}"    
+    
     After listing the assets, structure them in this format:
     {step1_answer_format}
 
     Avoid using normal text; format your response strictly as specified above.
-
-    Natural language description: "{request}"
     """
         step1_prompt += "\nRespone:" 
         step1_prompts.append(step1_prompt)

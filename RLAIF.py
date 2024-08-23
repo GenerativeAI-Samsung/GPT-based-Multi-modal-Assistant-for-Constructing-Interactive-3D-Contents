@@ -54,16 +54,16 @@ def prompt_reward(criteria, answer_format, prompt, response):
     The responder's answer is formatted as:
     {answer_format}
 
+    User's request: "{prom}"
+
+    Responder's answer: "{res}"
+
     After determining your answer, structure them in this format:
     rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
                         {{"name": criteria2, "score": score2, "description": description2}},
                         ...]
 
     Avoid using normal text; format your response strictly as specified above.
-    ----------------------------------------------------------------------------------------------------------
-    User's request: "{prom}"
-
-    Responder's answer: "{res}"
     """
         rewarding_prompts.append(rewarding_prompt)
     return rewarding_prompts
