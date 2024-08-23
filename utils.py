@@ -78,12 +78,15 @@ def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state
 
     reward_score = []
     # Caculate the average rewarding score 
+    
+    # Local variables
+    local_vars = {}
     for item in score_response:
-        exec(item)
-        for reward_item in rewarding_score:
-            reward_score += item['score']
-            print(f"item: {item},reward_score: {reward_score}")
-        reward_score.append(torch.tensor(reward_score / (10 * len(rewarding_score))))
+        exec(item, {}, local_vars)
+        for reward_item in local_vars['rewarding_score']:
+            reward_score += reward_item['score']
+            print(f"item: {reward_item},reward_score: {reward_score}")
+        reward_score.append(torch.tensor(reward_score / (10 * len(local_vars['rewarding_score']))))
 
     reward_score = torch.stack(reward_score, dim=0).to(device)
     
@@ -91,8 +94,7 @@ def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state
 
     # KL diverage 
     kl_loss = nn.KLDivLoss(reduction="none", log_target=True)
-    kl_loss_sum = torch.tensor(0.0).to(device)
-
+    
     # Stack both last_hidden_state
     last_hidden_state = torch.stack(list(last_hidden_state)).to(device)
     base_last_hidden_state = torch.stack(list(base_last_hidden_state)).to(device)
