@@ -1,5 +1,7 @@
 import json
 import random
+import asyncio
+
 
 import torch
 import torch.optim as optim
@@ -65,7 +67,6 @@ def prompt_reward(criteria, answer_format, prompt, response):
 
     Avoid using normal text; format your response strictly as specified above.
     -------------------------------------------------------------------------
-    YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
     REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
     rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
                         {{"name": criteria2, "score": score2, "description": description2}},
@@ -233,7 +234,7 @@ def train(tokenizer,
                     custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
                     exec(custom_run)
 
-                    score_response = generate_reward_score_from_api(prompt=rewarding_prompt)
+                    score_response = asyncio.run(generate_reward_score_from_api(prompt=rewarding_prompt))
 
                     # Caculate loss 
                     loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, batch_size=batch_size)

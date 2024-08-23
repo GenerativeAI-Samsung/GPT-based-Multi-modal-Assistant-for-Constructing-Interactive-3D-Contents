@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from g4f.client import Client
+import g4f
+import asyncio
+import random
+
 
 def split_answer_from_respone(respone):
     list_answer = []
@@ -46,32 +49,45 @@ def interact_with_lm(tokenizer, model, prompt, setting):
     
     return decoded_outputs, last_hidden_state
 
-def generate_reward_score_from_api(prompt):
-    
-    score_lists = []
-    client = Client()
-
-    list_model = ['gpt-4',
-              'gpt-4-turbo',
-              'gpt-4o',
-              'nemotron-4-340b-instruct',
-              'meta-llama/Meta-Llama-3.1-405B-Instruct-FP8',
-              'meta-llama/Meta-Llama-3-70B-Instruct',
-              'meta/meta-llama-3-70b-instruct',
-              'meta-llama/Llama-3-70b-chat-hf',
-              'meta-llama/Meta-Llama-3.1-70B-Instruct']
-    
-    for prom in prompt: 
-        for model_id in list_model:
-            try:
-                response = client.chat.completions.create(
-                    model=model_id,
-                    messages=[{"role": "user", "content": prom}]
-                )
-                score_lists.append(response.choices[0].message.content)
-            except:
+async def process_api_request(request, index):
+    while True:
+        try:
+            await asyncio.sleep(random.randint(10, 20))
+            print(request)
+            print(f"Started API request of index: {index}.")
+            response = await g4f.ChatCompletion.create_async(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": request}],
+            )
+            if len(response) == 0:
                 continue
-    return score_lists
+            try: 
+              exec(response)
+              print(f"Completed API request of index: {index}")
+              return response
+            except:
+                warining = """
+    -------------------------------------------------------------------------
+    YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
+    REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+    rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
+                        {{"name": criteria2, "score": score2, "description": description2}},
+                        ...]
+    ------------------------------------------------------------------------
+    """
+                request = request + warining
+                continue
+
+        except Exception as e:
+            print(f"Request of index {index} - Error: {str(e)}")
+            await asyncio.sleep(10)
+
+async def generate_reward_score_from_api(prompt):
+    #async with Client() as session:
+        tasks = []
+        for index, request in enumerate(prompt):
+            tasks.append(process_api_request(request, index))
+        return await asyncio.gather(*tasks, return_exceptions=True)
 
 def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state, batch_size, beta=0.2):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -94,7 +110,7 @@ def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state
 
     # KL diverage 
     kl_loss = nn.KLDivLoss(reduction="none", log_target=True)
-    
+
     # Stack both last_hidden_state
     last_hidden_state = torch.stack(list(last_hidden_state)).to(device)
     base_last_hidden_state = torch.stack(list(base_last_hidden_state)).to(device)

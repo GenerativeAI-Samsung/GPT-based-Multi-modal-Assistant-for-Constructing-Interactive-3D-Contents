@@ -29,7 +29,6 @@ Each asset is described with a concise name (x) and a detailed visual descriptio
     """
         step1_prompt += f"""
     -------------------------------------------------------------------------
-    YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
     REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
     {step1_answer_format}
     ------------------------------------------------------------------------
