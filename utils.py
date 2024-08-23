@@ -51,36 +51,39 @@ def interact_with_lm(tokenizer, model, prompt, setting):
 
 async def process_api_request(request, index):
     while True:
-        try:
-            await asyncio.sleep(random.randint(10, 20))
-            print(request)
-            print(f"Started API request of index: {index}.")
-            response = await g4f.ChatCompletion.create_async(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": request}],
-            )
-            if len(response) == 0:
-                continue
-            try: 
-              exec(response)
-              print(f"Completed API request of index: {index}")
-              return response
-            except:
-                warining = """
-    -------------------------------------------------------------------------
-    YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
-    REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
-    rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
-                        {{"name": criteria2, "score": score2, "description": description2}},
-                        ...]
-    ------------------------------------------------------------------------
-    """
-                request = request + warining
-                continue
+        if (request != 'object_list = []'):
+            try:
+                await asyncio.sleep(random.randint(10, 20))
+                print(request)
+                print(f"Started API request of index: {index}.")
+                response = await g4f.ChatCompletion.create_async(
+                    model="gpt-4o",
+                    messages=[{"role": "user", "content": request}],
+                )
+                if len(response) == 0:
+                    continue
+                try: 
+                    exec(response)
+                    print(f"Completed API request of index: {index}")
+                    return response
+                except:
+                    warining = """
+        -------------------------------------------------------------------------
+        YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
+        REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+        rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
+                            {{"name": criteria2, "score": score2, "description": description2}},
+                            ...]
+        ------------------------------------------------------------------------
+        """
+                    request = request + warining
+                    continue
 
-        except Exception as e:
-            print(f"Request of index {index} - Error: {str(e)}")
-            await asyncio.sleep(10)
+            except Exception as e:
+                print(f"Request of index {index} - Error: {str(e)}")
+                await asyncio.sleep(10)
+        else:
+            return 'rewarding_score = [{"score": 0}]'
 
 async def generate_reward_score_from_api(prompt):
     #async with Client() as session:
