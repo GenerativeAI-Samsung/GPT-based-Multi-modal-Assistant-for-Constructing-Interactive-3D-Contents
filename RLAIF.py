@@ -460,7 +460,7 @@ if __name__ == '__main__':
     # model_max_length = 4096 by default
     tokenizer = AutoTokenizer.from_pretrained(
         MODEL_ID,
-        model_max_length=4096,
+        model_max_length=2048,
         padding_side="right",
         use_fast=False)
 

@@ -31,10 +31,10 @@ def interact_with_lm(tokenizer, model, prompt, setting):
 
     # Generate the output
     if (setting == "peft_model"):
-        outputs = model.generate(**inputs, max_length=4096, output_hidden_states=True, return_dict_in_generate=True)
+        outputs = model.generate(**inputs, max_length=2048, output_hidden_states=True, return_dict_in_generate=True)
     if (setting == "base_model"):
         with torch.no_grad():
-            outputs = model.generate(**inputs, max_length=4096, output_hidden_states=True, return_dict_in_generate=True)
+            outputs = model.generate(**inputs, max_length=2048, output_hidden_states=True, return_dict_in_generate=True)
 
     # Extract last hidden state
     # Last hidden state is a tuple of sequence_length. 
