@@ -102,10 +102,11 @@ def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state
     local_vars = {}
     for item in score_response:
         exec(item, {}, local_vars)
+        temp = 0
         for reward_item in local_vars['rewarding_score']:
-            reward_score += reward_item['score']
-            print(f"item: {reward_item},reward_score: {reward_score}")
-        reward_score.append(torch.tensor(reward_score / (10 * len(local_vars['rewarding_score']))))
+            temp += reward_item['score']
+            print(f"item: {reward_item},reward_score: {temp}")
+        reward_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score']))))
 
     reward_score = torch.stack(reward_score, dim=0).to(device)
     
