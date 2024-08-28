@@ -29,6 +29,7 @@ def interact_with_lm(tokenizer, model, prompt, setting):
     inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True).input_ids
 
     batch_size, seq_length = inputs.shape
+    print(f"seq_length: {seq_length}")
     num_tokens_to_generate = 2048
     # Generate the output
     if (setting == "peft_model"):
