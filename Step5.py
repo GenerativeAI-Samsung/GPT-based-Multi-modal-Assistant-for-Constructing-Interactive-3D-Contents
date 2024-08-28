@@ -6,11 +6,11 @@ def step5(tokenizer, model, user_request, step3_response, initial_position):
 trajectory = {
     "total_frames": total_frame,
     "motions": [
-        {"frame_start": frame_start, "frame_end": frame_end, "trajectory": [cordinate1, cordinate2, ...], "object": object}, 
+        {"frame_start": frame_start, "frame_end": frame_end, "trajectory": [cordinate1, cordinate2, ...], "object": object, "description": description}, 
         ...
             ]
 }
-where total_frames represents the total number of frames in the video, formatted as an integer, and motions is a list of motions that will occur in the video, where each element contains fields including start_frame, end_frame, and list the coordinates of the points through which the path will pass to later perform interpolation to create a trajectory.
+where total_frames represents the total number of frames in the video, formatted as an integer, and motions is a list of motions that will occur in the video, where each element contains fields including start_frame, end_frame, list the coordinates of the points through which the path will pass to later perform interpolation to create a trajectory and the description about motion.
 """
     step5_prompt = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 

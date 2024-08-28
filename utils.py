@@ -47,43 +47,40 @@ def interact_with_lm(tokenizer, model, prompt, setting):
     # Decode the generated tokens back to text
     decoded_outputs = [tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
     
-    return decoded_outputs, last_hidden_state
+    return decoded_outputs, last_hidden_state, outputs
 
 async def process_api_request(request, index):
     while True:
-        if (request != 'object_list = []'):
-            try:
-                await asyncio.sleep(random.randint(10, 20))
-                print(request)
-                print(f"Started API request of index: {index}.")
-                response = await g4f.ChatCompletion.create_async(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": request}],
-                )
-                if len(response) == 0:
-                    continue
-                try: 
-                    exec(response)
-                    print(f"Completed API request of index: {index}")
-                    return response
-                except:
-                    warining = """
-        -------------------------------------------------------------------------
-        YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
-        REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
-        rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
-                            {{"name": criteria2, "score": score2, "description": description2}},
-                            ...]
-        ------------------------------------------------------------------------
-        """
-                    request = request + warining
-                    continue
+        try:
+            await asyncio.sleep(random.randint(10, 20))
+            print(request)
+            print(f"Started API request of index: {index}.")
+            response = await g4f.ChatCompletion.create_async(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": request}],
+            )
+            if len(response) == 0:
+                continue
+            try: 
+                exec(response)
+                print(f"Completed API request of index: {index}")
+                return response
+            except:
+                warining = """
+    -------------------------------------------------------------------------
+    YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
+    REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+    rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
+                        {{"name": criteria2, "score": score2, "description": description2}},
+                        ...]
+    ------------------------------------------------------------------------
+    """
+                request = request + warining
+                continue
 
-            except Exception as e:
-                print(f"Request of index {index} - Error: {str(e)}")
-                await asyncio.sleep(10)
-        else:
-            return 'rewarding_score = [{"score": 0}]'
+        except Exception as e:
+            print(f"Request of index {index} - Error: {str(e)}")
+            await asyncio.sleep(10)
 
 async def generate_reward_score_from_api(prompt):
     #async with Client() as session:
@@ -116,15 +113,19 @@ def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state
     kl_loss = nn.KLDivLoss(reduction="none", log_target=True)
 
     # Stack both last_hidden_state
-    last_hidden_state = torch.stack(list(last_hidden_state)).to(device)
-    base_last_hidden_state = torch.stack(list(base_last_hidden_state)).to(device)
+    print(f"before_stack last_hidden_state: requires_grad -> {last_hidden_state[0].requires_grad}")
+    last_hidden_state = torch.stack(last_hidden_state).to(device)
+    print(f"after_stack last_hidden_state: requires_grad -> {last_hidden_state.requires_grad}")
+    print(f"before_stack base_last_hidden_state: requires_grad -> {base_last_hidden_state[0].requires_grad}")
+    base_last_hidden_state = torch.stack(base_last_hidden_state).to(device)
+    print(f"after_stack base_last_hidden_state: require_grad -> {last_hidden_state.requires_grad}")
 
     # then transpose
     last_hidden_state = torch.transpose(last_hidden_state, 0, 1)
     base_last_hidden_state = torch.transpose(base_last_hidden_state, 0, 1)
 
     # Add padding if two hidden state is not in same length
-    padding = torch.zeros(4, 1, 1, 4096)
+    padding = torch.zeros(4, 1, 1, 4096, requires_grad=True)
     if (last_hidden_state.shape[1] < base_last_hidden_state.shape[1]):
         last_hidden_state = torch.cat((last_hidden_state, padding), 1)
     elif (last_hidden_state.shape[1] > base_last_hidden_state.shape[1]):
@@ -132,7 +133,7 @@ def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state
     
     # Caculate distribution on last_hidden_state and base_last_hidden_state
     agent_log_distribution = F.log_softmax(last_hidden_state, dim=-1)
-    base_log_distribution = F.log_softmax(item, dim=-1)
+    base_log_distribution = F.log_softmax(base_last_hidden_state, dim=-1)
     
     kl_loss_value = kl_loss(agent_log_distribution.to(device), base_log_distribution.to(device))
 
@@ -140,9 +141,9 @@ def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state
 
     print(f"kl_loss_average: {kl_loss_average}")
 
-    beta = torch.tensor(beta).to(device)
+    beta = torch.tensor(beta, requires_grad=True).to(device)
 
-    total_loss = (1 - beta) * reward_score - beta * kl_loss_average
+    total_loss = beta * kl_loss_average -(1 - beta) * reward_score  
     total_loss = total_loss.mean() 
     print(f"total_loss: {total_loss}")
 

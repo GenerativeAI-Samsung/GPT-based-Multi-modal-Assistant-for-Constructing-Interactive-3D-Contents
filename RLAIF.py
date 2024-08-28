@@ -77,13 +77,13 @@ def prompt_reward(criteria, answer_format, prompt, response):
     return rewarding_prompts
 
 def running_step1(tokenizer, model, base_model, criteria, user_request):
-    step1_answer_format, step1_prompt, step1_response, step1_last_hidden_state = step1(tokenizer=tokenizer, model=model, user_request=user_request)
+    step1_answer_format, step1_prompt, step1_response, step1_last_hidden_state, step1_outputs = step1(tokenizer=tokenizer, model=model, user_request=user_request)
     
     for res in step1_response:
         print(res)
-    _, step1_base_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=base_model, prompt=step1_prompt, setting="base_model")
+    _, step1_base_last_hidden_state, step1_base_outputs = interact_with_lm(tokenizer=tokenizer, model=base_model, prompt=step1_prompt, setting="base_model")
     rewarding_prompt = prompt_reward(criteria=criteria, answer_format=step1_answer_format, prompt=step1_prompt, response=step1_response)
-    return rewarding_prompt, step1_last_hidden_state, step1_base_last_hidden_state
+    return rewarding_prompt, step1_last_hidden_state, step1_base_last_hidden_state, step1_outputs, step1_base_outputs
 
 def running_step2(tokenizer, model, criteria, user_request):
     _, _, step1_response, _ = step1(tokenizer=tokenizer, model=model, user_request=user_request)
@@ -199,7 +199,7 @@ def train(tokenizer,
 
             # Get response from Llama3 and feedback from GPT-4
             if (int(running_step) == 1):
-                rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step1(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)
+                rewarding_prompt, last_hidden_state, base_last_hidden_state, outputs, outputs_base = running_step1(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)
 
             score_response = asyncio.run(generate_reward_score_from_api(prompt=rewarding_prompt))
             
@@ -215,6 +215,12 @@ def train(tokenizer,
 
             loss_value.backward()
             optimizer.step()
+
+            del loss_value
+            del last_hidden_state
+            del base_last_hidden_state
+            del outputs
+            del outputs_base
 
             print(f"\tepoch: {epoch}, batch: {i}")
 
@@ -232,21 +238,31 @@ def train(tokenizer,
             for i in range(num_batch):
 
                 batch_data = []
-                for j in range(i * batch_size, (i + 1)*batch_size):
-                    batch_data.append(test_data[i])
+                for j in range(i * 1, (i + 1) * 1):
+                    if (int(running_step) == 1):
+                        batch_data.append(test_data[i]['respone'])
+                # TODO ------------------------------------------------
+                    elif (int(running_step) == 2):
+                        pass
+                    elif (int(running_step) == 3):
+                        pass
+                    elif (int(running_step) == 4):
+                        pass
+                    elif (int(running_step) == 5):
+                        pass
+                # ------------------------------------------------
 
                 # Get response from Llama3 and feedback from GPT-4
-                custom_run = f"rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step{running_step}(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)"
-                exec(custom_run)
-                
+                if (int(running_step) == 1):
+                    rewarding_prompt, last_hidden_state, base_last_hidden_state = running_step1(tokenizer=tokenizer, model=model, base_model=base_model, criteria=criterias, user_request=batch_data)
 
                 score_response = asyncio.run(generate_reward_score_from_api(prompt=rewarding_prompt))
-
+                
                 for res in score_response:
                     print(res)
 
                 # Caculate loss 
-                loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, batch_size=batch_size)
+                loss_value = RLAIF_loss_fuction(score_response=score_response, last_hidden_state=last_hidden_state, base_last_hidden_state=base_last_hidden_state, batch_size=1)
 
                 # Tracking training history
                 total_loss += 1

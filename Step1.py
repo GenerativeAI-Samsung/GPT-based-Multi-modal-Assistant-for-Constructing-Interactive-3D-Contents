@@ -36,8 +36,8 @@ Each asset is described with a concise name (x) and a detailed visual descriptio
         step1_prompt += "\nRespone:" 
         step1_prompts.append(step1_prompt)
     
-    step1_response, step1_last_hidden_state = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step1_prompts, setting="peft_model")
+    step1_response, step1_last_hidden_state, step1_outputs = interact_with_lm(tokenizer=tokenizer, model=model, prompt=step1_prompts, setting="peft_model")
     
     step1_response = split_answer_from_respone(respone=step1_response)
 
-    return step1_answer_format, step1_prompts, step1_response, step1_last_hidden_state
+    return step1_answer_format, step1_prompts, step1_response, step1_last_hidden_state, step1_outputs
