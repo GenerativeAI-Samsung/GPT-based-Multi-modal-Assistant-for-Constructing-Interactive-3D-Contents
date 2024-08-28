@@ -26,28 +26,40 @@ def interact_with_lm(tokenizer, model, prompt, setting):
     print(f"len(prompt): {len(prompt)}")
 
     # Move tensors to the appropriate device (e.g., GPU if available)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    inputs = {k: v.to(device) for k, v in inputs.items()}
+    inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True).input_ids
 
+    batch_size, seq_length = inputs.shape
+    num_tokens_to_generate = 2048
     # Generate the output
     if (setting == "peft_model"):
-        outputs = model.generate(**inputs, max_length=2048, output_hidden_states=True, return_dict_in_generate=True)
+        for _ in range(num_tokens_to_generate):
+            # Perform forward pass
+            outputs = model(inputs, output_hidden_states=False, return_dict=True)
+            logits = outputs.logits
+            print(logits.shape)
+            # Get the last token logits and predict the next token
+            next_token_logits = logits[:, -1, :]
+            next_token_ids = torch.argmax(next_token_logits, dim=-1).unsqueeze(-1)
+
+            # Append the predicted tokens to the input_ids
+            inputs = torch.cat([inputs, next_token_ids], dim=-1)
     if (setting == "base_model"):
         with torch.no_grad():
-            outputs = model.generate(**inputs, max_length=2048, output_hidden_states=True, return_dict_in_generate=True)
+            for _ in range(num_tokens_to_generate):
+                # Perform forward pass
+                outputs = model(inputs, output_hidden_states=False, return_dict=True)
+                logits = outputs.logits
+                print(logits.shape)
 
-    # Extract last hidden state
-    # Last hidden state is a tuple of sequence_length. 
-    #   Each items is a tensor of [batch_size, feature, hidden_dim]
-    if hasattr(outputs, 'decoder_hidden_states'):
-        last_hidden_state = outputs.decoder_hidden_states[-1]
-    else:
-        last_hidden_state = outputs.hidden_states[-1]
+                # Get the last token logits and predict the next token
+                next_token_logits = logits[:, -1, :]
+                next_token_ids = torch.argmax(next_token_logits, dim=-1).unsqueeze(-1)
 
-    # Decode the generated tokens back to text
-    decoded_outputs = [tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
+                # Append the predicted tokens to the input_ids
+                inputs = torch.cat([inputs, next_token_ids], dim=-1)
     
-    return decoded_outputs, last_hidden_state, outputs
+    decoded_outputs = tokenizer.batch_decode(inputs, skip_special_tokens=True)    
+    return decoded_outputs, outputs.logits[ :, seq_length: , : ], outputs
 
 async def process_api_request(request, index):
     while True:
@@ -112,25 +124,16 @@ def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state
     # KL diverage 
     kl_loss = nn.KLDivLoss(reduction="none", log_target=True)
 
-    # Stack both last_hidden_state
-    print(f"before_stack last_hidden_state: requires_grad -> {last_hidden_state[0].requires_grad}")
-    last_hidden_state = torch.stack(last_hidden_state).to(device)
-    print(f"after_stack last_hidden_state: requires_grad -> {last_hidden_state.requires_grad}")
-    print(f"before_stack base_last_hidden_state: requires_grad -> {base_last_hidden_state[0].requires_grad}")
-    base_last_hidden_state = torch.stack(base_last_hidden_state).to(device)
-    print(f"after_stack base_last_hidden_state: require_grad -> {last_hidden_state.requires_grad}")
-
-    # then transpose
-    last_hidden_state = torch.transpose(last_hidden_state, 0, 1)
-    base_last_hidden_state = torch.transpose(base_last_hidden_state, 0, 1)
-
     # Add padding if two hidden state is not in same length
-    padding = torch.zeros(4, 1, 1, 4096, requires_grad=True)
+    padding = torch.zeros(batch_size, 1, 128258)
     if (last_hidden_state.shape[1] < base_last_hidden_state.shape[1]):
-        last_hidden_state = torch.cat((last_hidden_state, padding), 1)
+        last_hidden_state = (torch.cat((last_hidden_state, padding), 1) for i in range(base_last_hidden_state.shape[1] - last_hidden_state.shape[1]))
     elif (last_hidden_state.shape[1] > base_last_hidden_state.shape[1]):
-        base_last_hidden_state = torch.cat((base_last_hidden_state, padding), 1)
+        base_last_hidden_state = (torch.cat((base_last_hidden_state, padding), 1) for i in range(last_hidden_state.shape[1] - base_last_hidden_state.shape[1]))
     
+    print(f"last_hidden_state require_grad: {last_hidden_state.requires_grad} {last_hidden_state.shape}")
+    print(f"base_last_hidden_state require_grad: {base_last_hidden_state.requires_grad} {base_last_hidden_state.shape}")
+
     # Caculate distribution on last_hidden_state and base_last_hidden_state
     agent_log_distribution = F.log_softmax(last_hidden_state, dim=-1)
     base_log_distribution = F.log_softmax(base_last_hidden_state, dim=-1)
