@@ -83,10 +83,10 @@ async def process_api_request(request, index):
 
 async def generate_reward_score_from_api(prompt):
     #async with Client() as session:
-        tasks = []
-        for index, request in enumerate(prompt):
-            tasks.append(process_api_request(request, index))
-        return await asyncio.gather(*tasks, return_exceptions=True)
+    tasks = []
+    for index, request in enumerate(prompt):
+        tasks.append(process_api_request(request, index))
+    return await asyncio.gather(*tasks, return_exceptions=True)
 
 def RLAIF_loss_fuction(score_response, last_hidden_state, base_last_hidden_state, batch_size, beta=0.2):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
