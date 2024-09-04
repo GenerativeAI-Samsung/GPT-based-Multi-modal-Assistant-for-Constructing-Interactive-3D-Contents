@@ -228,31 +228,37 @@ def split_response_with_prompt(batch):
 
 def split_into_chunks(tokenizer, model_response_batch, base_model_respose_batch, length=200):
     chunks_batch = []
-
     for model_respone, base_model_respone in zip(model_response_batch, base_model_respose_batch):
+        # Tokenize the input prompts
         result = []
         pair_respone = [model_respone, base_model_respone]
         inputs = tokenizer(pair_respone, return_tensors="pt", padding=True)
 
+        base_model_respone_input_ids, model_respone_input_ids = torch.split(inputs.input_ids, 1, 0)
+        model_attention_mask, base_model_attention_mask = torch.split(inputs.attention_mask, 1, 0)
+
         # Split input_ids and attention_mask  
-        splitted_input_ids = torch.split(inputs.input_ids, length, -1)
-        splitted_attention_mask = torch.split(inputs.attention_mask, length, -1)
+        splitted_model_input_ids = torch.split(model_respone_input_ids, length, -1)
+        splitted_base_model_input_ids = torch.split(base_model_respone_input_ids, length, -1)
+        splitted_model_attention_mask = torch.split(model_attention_mask, length, -1)
+        splitted_base_model_attention_mask = torch.split(base_model_attention_mask, length, -1)
 
-        for item_input_ids, item_attention_mask in zip(splitted_input_ids, splitted_attention_mask):
+        model_chunks = []
+        base_model_chunks = []
+
+        for item_input_ids, item_attention_mask in zip(splitted_model_input_ids, splitted_model_attention_mask):
             temp = {"input_ids": item_input_ids, "attention_mask": item_attention_mask}
-            result.append(temp)
+            model_chunks.append(temp)
         
-        # Split in the middle
-        mid_index = len(result) // 2
-        model_chunks = result[:mid_index]
-        base_model_chunks = result[mid_index:]
-
+        for item_input_ids, item_attention_mask in zip(splitted_base_model_input_ids, splitted_base_model_attention_mask):
+            temp = {"input_ids": item_input_ids, "attention_mask": item_attention_mask}
+            base_model_chunks.append(temp)
+        
         # Zip pair model_chunks correspond to base_model_chunks
         result = zip(model_chunks, base_model_chunks)
         
         # Finish processing one sentence, append to chunks_batch
         chunks_batch.append(result)
-    
     return chunks_batch
 
 def model_forward(inputs, model):
@@ -322,21 +328,24 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
     beta = torch.tensor(0.2).to(device)  
     for rewarding_score, chunks in zip(average_rewarding_score, chunks_batch):
         for model_inputs, base_model_inputs in chunks:
+
             # Caculate chunk output of forward 
-            model_chunk_output = model_forward(inputs=model_inputs.to(device), model=model)
-            base_model_chunk_output = base_model_forward(inputs=base_model_inputs.to(device), base_mode=base_model)
+            model_chunk_output = model_forward(inputs=model_inputs, model=model)
+            base_model_chunk_output = base_model_forward(inputs=base_model_inputs, base_mode=base_model)
             
             # Caculate KL diverage loss
             kl_loss = caculate_KL_diverage_loss(model_chunk_logit=model_chunk_output.logits, base_model_chunk_logit=base_model_chunk_output.logits)
 
             # Caculate total loss
             total_loss = -torch.log(beta * kl_loss -(1 - beta) * rewarding_score)
-
             # Backward
             total_loss.backward()
 
             # Print out value reference by outputs variable
             print("------------------caculate_loss_and_do_gradient_accumulation------------------")
+            print(f"model_inputs: {model_inputs}")
+            print(f"base_model_inputs: {base_model_inputs}")
+            print(f"total_loss: total_loss")
             referrers_model_forward = gc.get_referrers(model_chunk_output)
             referrers_base_model_forward = gc.get_referrers(base_model_chunk_output)
             print(f"Number of referrers_model_forward: {len(referrers_model_forward)}") 
