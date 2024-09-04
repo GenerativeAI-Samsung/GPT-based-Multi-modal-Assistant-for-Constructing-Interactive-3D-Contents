@@ -333,6 +333,9 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             model_chunk_output = model_forward(inputs=model_inputs, model=model)
             base_model_chunk_output = base_model_forward(inputs=base_model_inputs, base_mode=base_model)
             
+            print(f"model_chunk_output: {model_chunk_output} requires_grad={model_chunk_output.requires_grad}")
+            print(f"base_model_chunk_output: {base_model_chunk_output} requires_grad={base_model_chunk_output.requires_grad}")
+
             # Caculate KL diverage loss
             kl_loss = caculate_KL_diverage_loss(model_chunk_logit=model_chunk_output.logits, base_model_chunk_logit=base_model_chunk_output.logits)
 
@@ -345,7 +348,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             print("------------------caculate_loss_and_do_gradient_accumulation------------------")
             print(f"model_inputs: {model_inputs}")
             print(f"base_model_inputs: {base_model_inputs}")
-            print(f"total_loss: total_loss")
+            print(f"total_loss: {total_loss} requires_grad={total_loss.requires_grad}")
             referrers_model_forward = gc.get_referrers(model_chunk_output)
             referrers_base_model_forward = gc.get_referrers(base_model_chunk_output)
             print(f"Number of referrers_model_forward: {len(referrers_model_forward)}") 
