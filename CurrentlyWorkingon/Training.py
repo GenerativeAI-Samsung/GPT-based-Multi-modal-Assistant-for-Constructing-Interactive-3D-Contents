@@ -160,14 +160,14 @@ async def generate_rewarding_score(rewarding_prompt):
 
 def model_generate(model, tokenizer, processed_batch):
     # Tokenize the input prompt
-    inputs = tokenizer(processed_batch, return_tensors="pt", padding=True)
+    inputs = tokenizer(processed_batch['processed_batch'], return_tensors="pt", padding=True)
 
     # Move tensors to the appropriate device (e.g., GPU if available)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     # Generating
-    outputs = model.generate(**inputs, max_length=2048, output_hidden_states=True, return_dict_in_generate=True)
+    outputs = model.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
 
     # Decode the generated tokens back to text
     model_responses = [tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -191,14 +191,14 @@ def model_generate(model, tokenizer, processed_batch):
 
 def base_model_generate(base_model, tokenizer, processed_batch):
     # Tokenize the input prompt
-    inputs = tokenizer(processed_batch, return_tensors="pt", padding=True)
+    inputs = tokenizer(processed_batch['processed_batch'], return_tensors="pt", padding=True)
 
     # Move tensors to the appropriate device (e.g., GPU if available)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     # Generating
-    outputs = base_model.generate(**inputs, max_length=2048, output_hidden_states=True, return_dict_in_generate=True)
+    outputs = base_model.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
 
     # Decode the generated tokens back to text
     base_model_responses = [tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -303,7 +303,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
     rewarding_prompt = craft_rewarding_prompt(processed_batch=processed_batch, cropped_respone_batch=cropped_batch, scoring_criterias=scoring_criterias)
 
     # generate_rewarding_score
-    rewarding_score_text = generate_rewarding_score(rewarding_prompt=rewarding_prompt)
+    rewarding_score_text = asyncio.run(generate_rewarding_score(rewarding_prompt=rewarding_prompt))
 
     #exec_and_caculate_average
     average_rewarding_score = exec_and_caculate_average(rewarding_score_text=rewarding_score_text)
@@ -443,7 +443,7 @@ if __name__ == '__main__':
     # Loading tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
         MODEL_ID,
-        model_max_length=2048,
+        model_max_length=1536,
         padding_side="right",
         use_fast=False)
     
