@@ -178,7 +178,7 @@ def train(tokenizer,
         else:
             index_list = [i for i in range(len(train_data))]
         
-        num_batch = len(train_data) % batch_size
+        num_batch = len(train_data) // batch_size
         for i in range(num_batch):
             optimizer.zero_grad()
 
