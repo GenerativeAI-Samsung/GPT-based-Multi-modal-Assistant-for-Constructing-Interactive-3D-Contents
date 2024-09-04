@@ -167,7 +167,7 @@ def model_generate(model, tokenizer, processed_batch):
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     # Generating
-    outputs = model.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+    outputs = model.generate(**inputs, max_length=1024, output_hidden_states=True, return_dict_in_generate=True)
 
     # Decode the generated tokens back to text
     model_responses = [tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -338,6 +338,8 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
 
             # Caculate KL diverage loss
             kl_loss = caculate_KL_diverage_loss(model_chunk_logit=model_chunk_output.logits, base_model_chunk_logit=base_model_chunk_output.logits)
+            
+            print(f"kl_loss: {kl_loss} requires_grad={kl_loss.requires_grad}")
 
             # Caculate total loss
             total_loss = -torch.log(beta * kl_loss -(1 - beta) * rewarding_score)
@@ -455,7 +457,7 @@ if __name__ == '__main__':
     # Loading tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
         MODEL_ID,
-        model_max_length=1536,
+        model_max_length=1024,
         padding_side="right",
         use_fast=False)
     
@@ -485,7 +487,7 @@ if __name__ == '__main__':
           test_data_path=TEST_DATA_PATH,
           history_path=None,
           num_epoch=2,
-          batch_size=4,
+          batch_size=2,
           learning_rate=1e-9,
           shuffle=True)
 
