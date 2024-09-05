@@ -554,7 +554,7 @@ if __name__ == '__main__':
     # Loading tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
         MODEL_ID,
-        model_max_length=1024,
+        model_max_length=1536,
         padding_side="right",
         use_fast=False)
     
