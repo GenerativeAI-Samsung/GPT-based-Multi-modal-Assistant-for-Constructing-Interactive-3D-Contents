@@ -372,6 +372,11 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             # Free garbage collector
             gc.collect()
 
+def save_model(model):
+    diretory=f"/content/drive/MyDrive/adapter_folder"
+    model.save_pretrained(diretory)
+    print('saving model...')
+
 def train(tokenizer,
           model,
           base_model,
@@ -418,6 +423,10 @@ def train(tokenizer,
             
             optimizer.step()
             print(f"\tepoch: {epoch}, batch: {i}")
+        
+        print("Saving mode...")
+        save_model(model=model)
+
         print("Average Loss: {torch.tensor(history).mean()}")
 
 def test(tokenizer,
