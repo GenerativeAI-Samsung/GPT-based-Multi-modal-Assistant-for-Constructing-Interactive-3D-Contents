@@ -124,7 +124,6 @@ async def generate_rewarding_score(rewarding_prompt):
         while True:
             try:
                 await asyncio.sleep(random.randint(10, 20))
-                print(request)
                 print(f"Started API request of index: {index}.")
                 response = await g4f.ChatCompletion.create_async(
                     model="gpt-4o-mini",
@@ -280,7 +279,7 @@ def exec_and_caculate_average(rewarding_score_text):
         temp = 0
         for reward_item in local_vars['rewarding_score']:
             temp += reward_item['score']
-        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score']) + 8.0)))
+        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score']) + 5.0)))
     return average_rewarding_score
 
 def caculate_KL_diverage_loss(model_chunk_logit, base_model_chunk_logit):
@@ -292,7 +291,7 @@ def caculate_KL_diverage_loss(model_chunk_logit, base_model_chunk_logit):
     kl_div = F.kl_div(prob1.log(), prob2, reduction='batchmean')
     return kl_div 
 
-def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, batch, scoring_criterias):
+def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, batch, scoring_criterias, history):
     # Preprocess data
     processed_batch = step1_preprocess_data(batch=batch)
 
@@ -343,10 +342,11 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             print(f"kl_loss: {kl_loss} requires_grad={kl_loss.requires_grad}")
 
             # Caculate total loss
-            total_loss = -torch.log((1 - beta) * rewarding_score - beta * kl_loss / 1000)
+            total_loss = -torch.log((1 - beta) * rewarding_score - beta * kl_loss / 500)
             # Backward
-            total_loss.backward()
-
+            if not torch.isnan(total_loss).any():
+                total_loss.backward()
+                history.append(total_loss.clone().detach())                
             # Print out value reference by outputs variable
             print("------------------caculate_loss_and_do_gradient_accumulation------------------")
             print(f"model_inputs: {model_inputs}")
@@ -377,8 +377,6 @@ def train(tokenizer,
           base_model,
           scoring_criteria,
           train_data_path, 
-          test_data_path, 
-          history_path, 
           num_epoch, 
           batch_size,
           learning_rate,
@@ -387,11 +385,6 @@ def train(tokenizer,
     print("Loading train data...")
     f = open(train_data_path)
     train_data = json.load(f)
-
-    # load test_data
-    print("Loading test data...")
-    f = open(test_data_path)
-    test_data = json.load(f)
 
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
 
@@ -406,6 +399,9 @@ def train(tokenizer,
             index_list = [i for i in range(len(train_data))]
 
         num_batch = len(train_data) // batch_size
+        
+        # Tracking loss history
+        history = []
 
         for i in range(num_batch):
             optimizer.zero_grad()
@@ -422,16 +418,95 @@ def train(tokenizer,
             
             optimizer.step()
             print(f"\tepoch: {epoch}, batch: {i}")
+        print("Average Loss: {torch.tensor(history).mean()}")
+
+def test(tokenizer,
+        model,
+        scoring_criteria,
+        test_data_path,
+        batch_size=1,
+        shuffle=True
+        ):
+    # load train_data
+    print("Loading train data...")
+    f = open(test_data_path)
+    train_data = json.load(f)
+
+    # Tracking
+    answer_format_correctness = []
+    scores = []
+
+    num_batch = len(train_data) // batch_size
+
+    # Shuffle index data list
+    if (shuffle == True):
+        index_list = [i for i in range(len(train_data))]
+        random.shuffle(index_list)
+    else:
+        index_list = [i for i in range(len(train_data))]
+
+    for i in range(num_batch):
+        batch_data = []
+        for j in range(i * batch_size, (i + 1)*batch_size):
+            batch_data.append(train_data[index_list[j]]['respone'])
+
+            # Preprocess data
+            processed_batch = step1_preprocess_data(batch=batch_data)
+
+            # model_generate (require_grad=False)
+            model_respones = model_generate(model=model, tokenizer=tokenizer, processed_batch=processed_batch)
+
+            # ----------------------REWARDING SCORE PROCESSING---------------------------
+            # crop_response
+            cropped_batch = step1_crop_respone(batch=model_respones)
+            
+            # Tracking answer_format_correctness
+            for item in cropped_batch:
+                if item == "object_list = []":
+                    answer_format_correctness.append(0)
+                else:
+                    answer_format_correctness.append(1)
+
+            # craft_rewarding_prompt
+            rewarding_prompt = craft_rewarding_prompt(processed_batch=processed_batch, cropped_respone_batch=cropped_batch, scoring_criterias=scoring_criterias)
+
+            # generate_rewarding_score
+            rewarding_score_text = asyncio.run(generate_rewarding_score(rewarding_prompt=rewarding_prompt))
+
+            #exec_and_caculate_average_score
+            for item in rewarding_score_text:
+                # Local variables
+                local_vars = {}
+                print(item)
+                exec(item, {}, local_vars)
+                temp = 0
+                for reward_item in local_vars['rewarding_score']:
+                    temp += reward_item['score']
+                scores.append(temp / len(local_vars['rewarding_score']))
+    
+    print("Average Score: {torch.tensor(scores).mean()}")
+    print("Answer Format Correctness Percentage: {torch.tensor(answer_format_correctness).mean() * 100}%")
 
 if __name__ == '__main__':
-    TRAIN_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/train_examples.json'
-    TEST_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/test_examples.json'
-    EVALUATE_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/evaluate_examples.json'
+    # Interface
+    print('---------------------------------------------------------------\n')
+    print('Please choose setting option \n')
+    print('\t1: Fine-tune from scratch\n')
+    print('\t2: Resume fine-tune')
+    print('\t3: Evaluate')
+    setting_option = input('Setting Option (1 to 3): ')
+    print('---------------------------------------------------------------\n')
+    print('Running...')
 
+    IGNORE_INDEX = -100
     DEFAULT_PAD_TOKEN = "[PAD]"
     DEFAULT_EOS_TOKEN = "</s>"
     DEFAULT_BOS_TOKEN = "<s>"
     DEFAULT_UNK_TOKEN = "<unk>"
+
+    TRAIN_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/train_examples.json'
+    TEST_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/test_examples.json'
+    EVALUATE_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/evaluate_examples.json'
 
     step1_criteria = [
         {'name': 'Accuracy',
@@ -442,19 +517,32 @@ if __name__ == '__main__':
             'description': 'Do the objects align with the goals and requirements of the scene?'}
     ]
 
+    # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
+    adapter_folder = f"/content/adapter_folder/step1" 
+
     # Model and tokenizer IDs
     MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
 
     # Loading base model
     base_model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
 
-    # Loading peft model
-    peft_model = PeftModel.from_pretrained(
-        base_model,
-        MODEL_ID,
-        subfolder="loftq_init",
-        is_trainable=True)
-
+    if (setting_option == '1'): 
+        peft_model = PeftModel.from_pretrained(
+                base_model,
+                MODEL_ID,
+                subfolder="loftq_init",
+                is_trainable=True)
+    elif (setting_option == '2'):
+        peft_model = PeftModel.from_pretrained(
+                base_model,
+                adapter_folder,
+                is_trainable=True)
+    elif (setting_option == '3'):
+        peft_model = PeftModel.from_pretrained(
+                base_model,
+                adapter_folder,
+                is_trainable=False)
+    
     # Loading tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
         MODEL_ID,
@@ -479,16 +567,20 @@ if __name__ == '__main__':
         model=peft_model,
         base_model=base_model
     )
-
-    train(tokenizer=tokenizer,
-          model=peft_model,
-          base_model=base_model,
-          scoring_criteria=step1_criteria,
-          train_data_path=TRAIN_DATA_PATH,
-          test_data_path=TEST_DATA_PATH,
-          history_path=None,
-          num_epoch=2,
-          batch_size=2,
-          learning_rate=1e-9,
-          shuffle=True)
+    if setting_option == '1' or setting_option == '2':
+        train(tokenizer=tokenizer,
+            model=peft_model,
+            base_model=base_model,
+            scoring_criteria=step1_criteria,
+            train_data_path=TRAIN_DATA_PATH,
+            num_epoch=1,
+            batch_size=4,
+            learning_rate=1e-8,
+            shuffle=True)
+    if setting_option == '3':
+        test(tokenizer=tokenizer,
+             model=peft_model,
+             scoring_criteria=step1_criteria,
+             test_data_path=TEST_DATA_PATH
+             )
 
