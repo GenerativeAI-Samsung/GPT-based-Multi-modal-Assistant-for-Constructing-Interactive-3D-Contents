@@ -431,7 +431,7 @@ def train(tokenizer,
 
 def test(tokenizer,
         model,
-        scoring_criteria,
+        scoring_criterias,
         test_data_path,
         batch_size=1,
         shuffle=True
@@ -589,7 +589,7 @@ if __name__ == '__main__':
     if setting_option == '3':
         test(tokenizer=tokenizer,
              model=peft_model,
-             scoring_criteria=step1_criteria,
+             scoring_criterias=step1_criteria,
              test_data_path=TEST_DATA_PATH
              )
 
