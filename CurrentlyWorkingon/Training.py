@@ -418,7 +418,8 @@ def train(tokenizer,
                                                        model=model,
                                                        base_model=base_model,
                                                        batch=batch_data,
-                                                       scoring_criterias=scoring_criteria)
+                                                       scoring_criterias=scoring_criteria,
+                                                       history=history)
             
             optimizer.step()
             print(f"\tepoch: {epoch}, batch: {i}")
