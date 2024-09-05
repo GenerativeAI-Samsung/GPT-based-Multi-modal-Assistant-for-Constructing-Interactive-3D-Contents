@@ -435,28 +435,28 @@ def test(tokenizer,
         batch_size=1,
         shuffle=True
         ):
-    # load train_data
-    print("Loading train data...")
+    # load test_test
+    print("Loading test data...")
     f = open(test_data_path)
-    train_data = json.load(f)
+    test_data = json.load(f)
 
     # Tracking
     answer_format_correctness = []
     scores = []
 
-    num_batch = len(train_data) // batch_size
+    num_batch = len(test_data) // batch_size
 
     # Shuffle index data list
     if (shuffle == True):
-        index_list = [i for i in range(len(train_data))]
+        index_list = [i for i in range(len(test_data))]
         random.shuffle(index_list)
     else:
-        index_list = [i for i in range(len(train_data))]
+        index_list = [i for i in range(len(test_data))]
 
     for i in range(num_batch):
         batch_data = []
         for j in range(i * batch_size, (i + 1)*batch_size):
-            batch_data.append(train_data[index_list[j]]['respone'])
+            batch_data.append(test_data[index_list[j]]['respone'])
 
             # Preprocess data
             processed_batch = step1_preprocess_data(batch=batch_data)
