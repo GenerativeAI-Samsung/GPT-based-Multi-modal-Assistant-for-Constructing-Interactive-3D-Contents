@@ -127,7 +127,7 @@ async def generate_rewarding_score(rewarding_prompt):
                 print(request)
                 print(f"Started API request of index: {index}.")
                 response = await g4f.ChatCompletion.create_async(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     messages=[{"role": "user", "content": request}],
                 )
                 if len(response) == 0:
@@ -198,7 +198,7 @@ def base_model_generate(base_model, tokenizer, processed_batch):
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     # Generating
-    outputs = base_model.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+    outputs = base_model.generate(**inputs, max_length=1024, output_hidden_states=True, return_dict_in_generate=True)
 
     # Decode the generated tokens back to text
     base_model_responses = [tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -226,7 +226,7 @@ def split_response_with_prompt(batch):
         splitted_response_batch.append(temp)
     return splitted_response_batch
 
-def split_into_chunks(tokenizer, model_response_batch, base_model_respose_batch, length=200):
+def split_into_chunks(tokenizer, model_response_batch, base_model_respose_batch, length=500):
     chunks_batch = []
     for model_respone, base_model_respone in zip(model_response_batch, base_model_respose_batch):
         # Tokenize the input prompts
@@ -275,12 +275,12 @@ def exec_and_caculate_average(rewarding_score_text):
     for item in rewarding_score_text:
         # Local variables
         local_vars = {}
-
+        print(item)
         exec(item, {}, local_vars)
         temp = 0
         for reward_item in local_vars['rewarding_score']:
             temp += reward_item['score']
-        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score']))))
+        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score']) + 8.0)))
     return average_rewarding_score
 
 def caculate_KL_diverage_loss(model_chunk_logit, base_model_chunk_logit):
@@ -313,6 +313,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
 
     #exec_and_caculate_average
     average_rewarding_score = exec_and_caculate_average(rewarding_score_text=rewarding_score_text)
+    print(f"average_rewarding_score: {average_rewarding_score}")
     # -----------------------------------------------------------------------------
 
     # split_response_with_prompt
@@ -333,8 +334,8 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             model_chunk_output = model_forward(inputs=model_inputs, model=model)
             base_model_chunk_output = base_model_forward(inputs=base_model_inputs, base_mode=base_model)
             
-            print(f"model_chunk_output: {model_chunk_output} requires_grad={model_chunk_output.requires_grad}")
-            print(f"base_model_chunk_output: {base_model_chunk_output} requires_grad={base_model_chunk_output.requires_grad}")
+            print(f"model_chunk_output: {model_chunk_output.logits} requires_grad={model_chunk_output.logits.requires_grad}")
+            print(f"base_model_chunk_output: {base_model_chunk_output.logits} requires_grad={base_model_chunk_output.logits.requires_grad}")
 
             # Caculate KL diverage loss
             kl_loss = caculate_KL_diverage_loss(model_chunk_logit=model_chunk_output.logits, base_model_chunk_logit=base_model_chunk_output.logits)
@@ -342,7 +343,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             print(f"kl_loss: {kl_loss} requires_grad={kl_loss.requires_grad}")
 
             # Caculate total loss
-            total_loss = -torch.log(beta * kl_loss -(1 - beta) * rewarding_score)
+            total_loss = -torch.log((1 - beta) * rewarding_score - beta * kl_loss / 1000)
             # Backward
             total_loss.backward()
 
