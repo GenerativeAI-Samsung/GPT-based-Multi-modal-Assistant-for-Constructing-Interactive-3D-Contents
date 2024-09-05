@@ -157,7 +157,7 @@ async def generate_rewarding_score(rewarding_prompt):
         tasks.append(process_api_request(request, index))
     return await asyncio.gather(*tasks, return_exceptions=True)
 
-def model_generate(model, tokenizer, processed_batch):
+def model_generate(model, tokenizer, processed_batch, max_sequence_length=1024):
     # Tokenize the input prompt
     inputs = tokenizer(processed_batch['processed_batch'], return_tensors="pt", padding=True)
 
@@ -166,7 +166,7 @@ def model_generate(model, tokenizer, processed_batch):
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     # Generating
-    outputs = model.generate(**inputs, max_length=1024, output_hidden_states=True, return_dict_in_generate=True)
+    outputs = model.generate(**inputs, max_length=max_sequence_length, output_hidden_states=True, return_dict_in_generate=True)
 
     # Decode the generated tokens back to text
     model_responses = [tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -375,7 +375,6 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
 def save_model(model):
     diretory=f"/content/drive/MyDrive/adapter_folder"
     model.save_pretrained(diretory)
-    print('saving model...')
 
 def train(tokenizer,
           model,
@@ -463,7 +462,7 @@ def test(tokenizer,
             processed_batch = step1_preprocess_data(batch=batch_data)
 
             # model_generate (require_grad=False)
-            model_respones = model_generate(model=model, tokenizer=tokenizer, processed_batch=processed_batch)
+            model_respones = model_generate(model=model, tokenizer=tokenizer, processed_batch=processed_batch, max_sequence_length=1536)
 
             # ----------------------REWARDING SCORE PROCESSING---------------------------
             # crop_response
@@ -493,8 +492,8 @@ def test(tokenizer,
                     temp += reward_item['score']
                 scores.append(temp / len(local_vars['rewarding_score']))
     
-    print("Average Score: {torch.tensor(scores).mean()}")
-    print("Answer Format Correctness Percentage: {torch.tensor(answer_format_correctness).mean() * 100}%")
+    print(f"Average Score: {torch.tensor(scores).mean()}")
+    print(f"Answer Format Correctness Percentage: {torch.tensor(answer_format_correctness).mean() * 100}%")
 
 if __name__ == '__main__':
     # Interface
@@ -527,7 +526,7 @@ if __name__ == '__main__':
     ]
 
     # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
-    adapter_folder = f"/content/adapter_folder/step1" 
+    adapter_folder = f"/content/drive/MyDrive/adapter_folder" 
 
     # Model and tokenizer IDs
     MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
