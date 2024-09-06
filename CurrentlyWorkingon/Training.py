@@ -508,6 +508,7 @@ def test(tokenizer,
         index_list = [i for i in range(len(test_data))]
 
     for i in range(num_batch):
+        print(f"batch {i}")
         batch_data = []
         for j in range(i * batch_size, (i + 1)*batch_size):
             batch_data.append(test_data[index_list[j]]['respone'])
@@ -688,6 +689,13 @@ if __name__ == '__main__':
             batch_size=4,
             learning_rate=1e-8,
             shuffle=True)
+        
+        test(tokenizer=tokenizer,
+             model=peft_model,
+             scoring_criterias=step1_criteria,
+             test_data_path=TEST_DATA_PATH,
+             evaluate_data_path=EVALUATE_DATA_PATH
+             )
     if setting_option == '3':
         test(tokenizer=tokenizer,
              model=peft_model,
