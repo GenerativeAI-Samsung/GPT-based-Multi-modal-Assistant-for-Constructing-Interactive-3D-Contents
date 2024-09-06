@@ -14,6 +14,28 @@ import random
 import gc
 import json
 
+def smart_tokenizer_and_embedding_resize_base_model(
+    special_tokens_dict: Dict,
+    tokenizer: transformers.PreTrainedTokenizer,
+    base_model: transformers.PreTrainedModel
+):
+    """Resize tokenizer and embedding.
+
+    Note: This is the unoptimized version that may make your embedding size not be divisible by 64.
+    """
+    num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
+    base_model.resize_token_embeddings(len(tokenizer))
+
+    if num_new_tokens > 0:
+        input_embeddings = base_model.get_input_embeddings().weight.data
+        output_embeddings = base_model.get_output_embeddings().weight.data
+
+        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+
+        input_embeddings[-num_new_tokens:] = input_embeddings_avg
+        output_embeddings[-num_new_tokens:] = output_embeddings_avg
+
 def smart_tokenizer_and_embedding_resize(
     special_tokens_dict: Dict,
     tokenizer: transformers.PreTrainedTokenizer,
@@ -450,12 +472,13 @@ def train(tokenizer,
         print("Saving mode...")
         save_model(model=model)
 
-        print("Average Loss: {torch.tensor(history).mean()}")
+        print(f"Average Loss: {torch.tensor(history).mean()}")
 
 def test(tokenizer,
         model,
         scoring_criterias,
         test_data_path,
+        evaluate_data_path,
         batch_size=1,
         shuffle=True
         ):
@@ -463,6 +486,13 @@ def test(tokenizer,
     print("Loading test data...")
     f = open(test_data_path)
     test_data = json.load(f)
+
+    # load evaluate_test
+    print("Loading evaluate data...")
+    f = open(evaluate_data_path)
+    evaluate_data = json.load(f)
+
+    test_data = test_data + evaluate_data
 
     # Tracking
     answer_format_correctness = []
@@ -564,41 +594,90 @@ if __name__ == '__main__':
                 MODEL_ID,
                 subfolder="loftq_init",
                 is_trainable=True)
+        
+        # Loading tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(
+            MODEL_ID,
+            model_max_length=1536,
+            padding_side="right",
+            use_fast=False)
+    
+        # Adding special token to tokenizer
+        special_tokens_dict = dict()
+        if tokenizer.pad_token is None:
+            special_tokens_dict["pad_token"] = DEFAULT_PAD_TOKEN
+        if tokenizer.eos_token is None:
+            special_tokens_dict["eos_token"] = DEFAULT_EOS_TOKEN
+        if tokenizer.bos_token is None:
+            special_tokens_dict["bos_token"] = DEFAULT_BOS_TOKEN
+        if tokenizer.unk_token is None:
+            special_tokens_dict["unk_token"] = DEFAULT_UNK_TOKEN
+    
+        smart_tokenizer_and_embedding_resize(
+            special_tokens_dict=special_tokens_dict,
+            tokenizer=tokenizer,
+            model=peft_model,
+            base_model=base_model
+        )
     elif (setting_option == '2'):
+        # Loading tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(
+            MODEL_ID,
+            model_max_length=1536,
+            padding_side="right",
+            use_fast=False)
+    
+        # Adding special token to tokenizer
+        special_tokens_dict = dict()
+        if tokenizer.pad_token is None:
+            special_tokens_dict["pad_token"] = DEFAULT_PAD_TOKEN
+        if tokenizer.eos_token is None:
+            special_tokens_dict["eos_token"] = DEFAULT_EOS_TOKEN
+        if tokenizer.bos_token is None:
+            special_tokens_dict["bos_token"] = DEFAULT_BOS_TOKEN
+        if tokenizer.unk_token is None:
+            special_tokens_dict["unk_token"] = DEFAULT_UNK_TOKEN
+    
+        smart_tokenizer_and_embedding_resize_base_model(
+            special_tokens_dict=special_tokens_dict,
+            tokenizer=tokenizer,
+            base_model=base_model
+        )
+
         peft_model = PeftModel.from_pretrained(
                 base_model,
                 adapter_folder,
                 is_trainable=True)
     elif (setting_option == '3'):
+        # Loading tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(
+            MODEL_ID,
+            model_max_length=1536,
+            padding_side="right",
+            use_fast=False)
+    
+        # Adding special token to tokenizer
+        special_tokens_dict = dict()
+        if tokenizer.pad_token is None:
+            special_tokens_dict["pad_token"] = DEFAULT_PAD_TOKEN
+        if tokenizer.eos_token is None:
+            special_tokens_dict["eos_token"] = DEFAULT_EOS_TOKEN
+        if tokenizer.bos_token is None:
+            special_tokens_dict["bos_token"] = DEFAULT_BOS_TOKEN
+        if tokenizer.unk_token is None:
+            special_tokens_dict["unk_token"] = DEFAULT_UNK_TOKEN
+    
+        smart_tokenizer_and_embedding_resize_base_model(
+            special_tokens_dict=special_tokens_dict,
+            tokenizer=tokenizer,
+            base_model=base_model
+        )
+
         peft_model = PeftModel.from_pretrained(
                 base_model,
                 adapter_folder,
-                is_trainable=False)
+                is_trainable=True)
     
-    # Loading tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-        MODEL_ID,
-        model_max_length=1536,
-        padding_side="right",
-        use_fast=False)
-    
-    # Adding special token to tokenizer
-    special_tokens_dict = dict()
-    if tokenizer.pad_token is None:
-        special_tokens_dict["pad_token"] = DEFAULT_PAD_TOKEN
-    if tokenizer.eos_token is None:
-        special_tokens_dict["eos_token"] = DEFAULT_EOS_TOKEN
-    if tokenizer.bos_token is None:
-        special_tokens_dict["bos_token"] = DEFAULT_BOS_TOKEN
-    if tokenizer.unk_token is None:
-        special_tokens_dict["unk_token"] = DEFAULT_UNK_TOKEN
-    
-    smart_tokenizer_and_embedding_resize(
-        special_tokens_dict=special_tokens_dict,
-        tokenizer=tokenizer,
-        model=peft_model,
-        base_model=base_model
-    )
     if setting_option == '1' or setting_option == '2':
         train(tokenizer=tokenizer,
             model=peft_model,
@@ -613,6 +692,7 @@ if __name__ == '__main__':
         test(tokenizer=tokenizer,
              model=peft_model,
              scoring_criterias=step1_criteria,
-             test_data_path=TEST_DATA_PATH
+             test_data_path=TEST_DATA_PATH,
+             evaluate_data_path=EVALUATE_DATA_PATH
              )
 
