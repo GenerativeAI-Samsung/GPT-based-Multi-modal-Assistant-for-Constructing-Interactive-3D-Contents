@@ -586,6 +586,8 @@ if __name__ == '__main__':
     # Model and tokenizer IDs
     MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
 
+    print("Ei bro, nhớ điều chỉnh train_data cho phù hợp với train state hiện tại!"
+
     # Loading base model
     base_model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
 
@@ -703,4 +705,3 @@ if __name__ == '__main__':
              test_data_path=TEST_DATA_PATH,
              evaluate_data_path=EVALUATE_DATA_PATH
              )
-
