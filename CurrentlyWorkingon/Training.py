@@ -260,6 +260,25 @@ def split_into_chunks(tokenizer, model_response_batch, base_model_respose_batch,
         chunks_batch.append(result)
     return chunks_batch
 
+def split_into_chunks_v2(tokenizer, model_response_batch, length=500):
+    chunks_batch = []
+    for model_respone in model_response_batch:
+        inputs = tokenizer(model_respone, return_tensors="pt", padding=True)
+
+        # Split input_ids and attention_mask  
+        splitted_model_input_ids = torch.split(inputs, length, -1)
+        splitted_model_attention_mask = torch.split(inputs, length, -1)
+
+        model_chunks = []
+
+        for item_input_ids, item_attention_mask in zip(splitted_model_input_ids, splitted_model_attention_mask):
+            temp = {"input_ids": item_input_ids, "attention_mask": item_attention_mask}
+            model_chunks.append(temp)
+
+        # Finish processing one sentence, append to chunks_batch
+        chunks_batch.append(model_chunks)
+    return chunks_batch
+
 def model_forward(inputs, model):
     output = model(**inputs)
     return output
@@ -298,7 +317,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
     # model_generate (require_grad=False)
     # base_model_generate (require_grad=False)
     model_respones = model_generate(model=model, tokenizer=tokenizer, processed_batch=processed_batch)
-    base_model_responses = base_model_generate(base_model=base_model, tokenizer=tokenizer, processed_batch=processed_batch)
+    # base_model_responses = base_model_generate(base_model=base_model, tokenizer=tokenizer, processed_batch=processed_batch)
 
     # ----------------------REWARDING SCORE PROCESSING---------------------------
     # crop_response
@@ -317,32 +336,35 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
 
     # split_response_with_prompt
     splitted_model_respones = split_response_with_prompt(batch=model_respones)
-    splitted_base_model_respones = split_response_with_prompt(batch=base_model_responses)
+    # splitted_base_model_respones = split_response_with_prompt(batch=base_model_responses)
 
     # split_into_chunks
-    chunks_batch = split_into_chunks(tokenizer=tokenizer, model_response_batch=splitted_model_respones, base_model_respose_batch=splitted_base_model_respones)
+    # chunks_batch = split_into_chunks(tokenizer=tokenizer, model_response_batch=splitted_model_respones, base_model_respose_batch=splitted_base_model_respones)
+    chunks_batch = split_into_chunks_v2(tokenizer=tokenizer, model_response_batch=splitted_model_respones)
 
     # Caculate KL diverage loss, then final loss, then backward
     # Define Beta parameter
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    beta = torch.tensor(0.2).to(device)  
+    # beta = torch.tensor(0.2).to(device)  
     for rewarding_score, chunks in zip(average_rewarding_score, chunks_batch):
-        for model_inputs, base_model_inputs in chunks:
+        for model_inputs in chunks:
 
             # Caculate chunk output of forward 
             model_chunk_output = model_forward(inputs=model_inputs, model=model)
-            base_model_chunk_output = base_model_forward(inputs=base_model_inputs, base_mode=base_model)
+            # base_model_chunk_output = base_model_forward(inputs=base_model_inputs, base_mode=base_model)
             
-            print(f"model_chunk_output: {model_chunk_output.logits} requires_grad={model_chunk_output.logits.requires_grad}")
-            print(f"base_model_chunk_output: {base_model_chunk_output.logits} requires_grad={base_model_chunk_output.logits.requires_grad}")
+            print(f"model_chunk_output: {model_chunk_output.logits} dimension={model_chunk_output.logits.shape} requires_grad={model_chunk_output.logits.requires_grad}")
+            # print(f"base_model_chunk_output: {base_model_chunk_output.logits} requires_grad={base_model_chunk_output.logits.requires_grad}")
 
             # Caculate KL diverage loss
-            kl_loss = caculate_KL_diverage_loss(model_chunk_logit=model_chunk_output.logits, base_model_chunk_logit=base_model_chunk_output.logits)
+            # kl_loss = caculate_KL_diverage_loss(model_chunk_logit=model_chunk_output.logits, base_model_chunk_logit=base_model_chunk_output.logits)
             
-            print(f"kl_loss: {kl_loss} requires_grad={kl_loss.requires_grad}")
+            # print(f"kl_loss: {kl_loss} requires_grad={kl_loss.requires_grad}")
+
+            soft_max = nn.Softmax(dim=-1)
 
             # Caculate total loss
-            total_loss = -torch.log((1 - beta) * rewarding_score - beta * kl_loss / 500)
+            total_loss = (-torch.log(rewarding_score) * soft_max(model_chunk_output.logits)).sum()
             # Backward
             if not torch.isnan(total_loss).any():
                 total_loss.backward()
@@ -350,24 +372,24 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             # Print out value reference by outputs variable
             print("------------------caculate_loss_and_do_gradient_accumulation------------------")
             print(f"model_inputs: {model_inputs}")
-            print(f"base_model_inputs: {base_model_inputs}")
+            # print(f"base_model_inputs: {base_model_inputs}")
             print(f"total_loss: {total_loss} requires_grad={total_loss.requires_grad}")
             referrers_model_forward = gc.get_referrers(model_chunk_output)
-            referrers_base_model_forward = gc.get_referrers(base_model_chunk_output)
+            # referrers_base_model_forward = gc.get_referrers(base_model_chunk_output)
             print(f"Number of referrers_model_forward: {len(referrers_model_forward)}") 
-            print(f"Number of referrers_base_model_forward: {len(referrers_base_model_forward)}") 
+            # print(f"Number of referrers_base_model_forward: {len(referrers_base_model_forward)}") 
             # List the referrers_model_forward
             for ref in referrers_model_forward:
                 print(f"referrers_model_forward: {ref}")
             
             # List the referrers_base_model_forward
-            for ref in referrers_base_model_forward:
-                print(f"referrers_base_model_forward: {ref}")
+            # for ref in referrers_base_model_forward:
+                # print(f"referrers_base_model_forward: {ref}")
             print("-------------------------------------------------------------------------------")
 
             # Free memory
             del model_chunk_output
-            del base_model_chunk_output
+            # del base_model_chunk_output
 
             # Free garbage collector
             gc.collect()
@@ -472,9 +494,9 @@ def test(tokenizer,
             # Tracking answer_format_correctness
             for item in cropped_batch:
                 if item == "object_list = []":
-                    answer_format_correctness.append(0)
+                    answer_format_correctness.append(0.0)
                 else:
-                    answer_format_correctness.append(1)
+                    answer_format_correctness.append(1.0)
 
             # craft_rewarding_prompt
             rewarding_prompt = craft_rewarding_prompt(processed_batch=processed_batch, cropped_respone_batch=cropped_batch, scoring_criterias=scoring_criterias)
