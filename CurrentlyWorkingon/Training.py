@@ -266,8 +266,8 @@ def split_into_chunks_v2(tokenizer, model_response_batch, length=500):
         inputs = tokenizer(model_respone, return_tensors="pt", padding=True)
 
         # Split input_ids and attention_mask  
-        splitted_model_input_ids = torch.split(inputs, length, -1)
-        splitted_model_attention_mask = torch.split(inputs, length, -1)
+        splitted_model_input_ids = torch.split(inputs.input_ids, length, -1)
+        splitted_model_attention_mask = torch.split(inputs.attention_mask, length, -1)
 
         model_chunks = []
 
@@ -298,7 +298,8 @@ def exec_and_caculate_average(rewarding_score_text):
         temp = 0
         for reward_item in local_vars['rewarding_score']:
             temp += reward_item['score']
-        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score']) + 5.0)))
+            print(f"temp: {temp}")
+        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 1e-6))
     return average_rewarding_score
 
 def caculate_KL_diverage_loss(model_chunk_logit, base_model_chunk_logit):
@@ -364,7 +365,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             soft_max = nn.Softmax(dim=-1)
 
             # Caculate total loss
-            total_loss = (-torch.log(rewarding_score) * soft_max(model_chunk_output.logits)).sum()
+            total_loss = (-torch.log(rewarding_score) * soft_max(model_chunk_output.logits) / model_chunk_output.logits.shape[1]).sum()
             # Backward
             if not torch.isnan(total_loss).any():
                 total_loss.backward()
