@@ -77,7 +77,7 @@ Each asset is described with a concise name (x) and a detailed visual descriptio
     You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
     Your job is to list the assets individually, ensuring each is a single unit (avoiding composite sets). 
 
-    Natural language description: "{sample}"    
+    Natural language description: "{sample['respone']}"    
     
     After listing the assets, structure them in this format:
     {step1_answer_format}
@@ -324,6 +324,19 @@ def exec_and_caculate_average(rewarding_score_text):
         average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 1e-6))
     return average_rewarding_score
 
+def train_prompt(splitted_model_respones, batch):
+    output = []
+    for respone in splitted_model_respones:
+        prompt = f"""
+Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
+Script: {batch["query"]}
+
+Respone:
+{respone}
+"""
+        output.append(prompt)
+    return output
+
 def caculate_KL_diverage_loss(model_chunk_logit, base_model_chunk_logit):
     # Convert logits to probabilities using softmax
     prob1 = F.softmax(model_chunk_logit, dim=-1)
@@ -360,10 +373,12 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
     # split_response_with_prompt
     splitted_model_respones = split_response_with_prompt(batch=model_respones)
     # splitted_base_model_respones = split_response_with_prompt(batch=base_model_responses)
+    
+    prompted_splitted_model_respones = train_prompt(splitted_model_respones=splitted_model_respones, batch=batch)
 
     # split_into_chunks
     # chunks_batch = split_into_chunks(tokenizer=tokenizer, model_response_batch=splitted_model_respones, base_model_respose_batch=splitted_base_model_respones)
-    chunks_batch = split_into_chunks_v2(tokenizer=tokenizer, model_response_batch=splitted_model_respones)
+    chunks_batch = split_into_chunks_v2(tokenizer=tokenizer, model_response_batch=prompted_splitted_model_respones)
 
     # Caculate KL diverage loss, then final loss, then backward
     # Define Beta parameter
@@ -457,7 +472,7 @@ def train(tokenizer,
             
             batch_data = []
             for j in range(i * batch_size, (i + 1)*batch_size):
-                batch_data.append(train_data[index_list[j]]['respone'])
+                batch_data.append(train_data[index_list[j]])
             
             caculate_loss_and_do_gradient_accumulation(tokenizer=tokenizer,
                                                        model=model,
@@ -689,7 +704,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=4,
-            learning_rate=1e-8,
+            learning_rate=3e-6,
             shuffle=True)
         
         test(tokenizer=tokenizer,
