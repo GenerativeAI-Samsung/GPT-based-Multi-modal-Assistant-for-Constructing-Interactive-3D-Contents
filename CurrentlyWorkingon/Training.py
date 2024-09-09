@@ -321,15 +321,15 @@ def exec_and_caculate_average(rewarding_score_text):
         for reward_item in local_vars['rewarding_score']:
             temp += reward_item['score']
             print(f"temp: {temp}")
-        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 1e-6))
+        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.5))
     return average_rewarding_score
 
 def train_prompt(splitted_model_respones, batch):
     output = []
-    for respone in splitted_model_respones:
+    for i, respone in enumerate(splitted_model_respones):
         prompt = f"""
 Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
-Script: {batch["query"]}
+Script: {batch[i]["query"]}
 
 Respone:
 {respone}
@@ -402,7 +402,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             soft_max = nn.Softmax(dim=-1)
 
             # Caculate total loss
-            total_loss = (-torch.log(rewarding_score) * soft_max(model_chunk_output.logits) / model_chunk_output.logits.shape[1]).sum()
+            total_loss = (-torch.log(rewarding_score) * soft_max(model_chunk_output.logits)).sum()
             # Backward
             if not torch.isnan(total_loss).any():
                 total_loss.backward()
@@ -526,7 +526,7 @@ def test(tokenizer,
         print(f"batch {i}")
         batch_data = []
         for j in range(i * batch_size, (i + 1)*batch_size):
-            batch_data.append(test_data[index_list[j]]['respone'])
+            batch_data.append(test_data[index_list[j]])
 
             # Preprocess data
             processed_batch = step1_preprocess_data(batch=batch_data)
