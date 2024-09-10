@@ -444,11 +444,14 @@ def train(tokenizer,
           num_epoch, 
           batch_size,
           learning_rate,
-          shuffle=True):
+          start_index,
+          end_index,
+          shuffle=True,):
     # load train_data
     print("Loading train data...")
     f = open(train_data_path)
     train_data = json.load(f)
+    train_data = train_data[start_index:end_index]
 
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
 
@@ -573,6 +576,8 @@ if __name__ == '__main__':
     print('\t2: Resume fine-tune')
     print('\t3: Evaluate')
     setting_option = input('Setting Option (1 to 3): ')
+    start_index = input('Start_index (for training): ')
+    end_index = input('End_index (for training): ')
     print('---------------------------------------------------------------\n')
     print('Running...')
 
@@ -600,8 +605,6 @@ if __name__ == '__main__':
 
     # Model and tokenizer IDs
     MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
-
-    print("Ei bro, nhớ điều chỉnh train_data cho phù hợp với train state hiện tại!"
 
     # Loading base model
     base_model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
@@ -705,14 +708,9 @@ if __name__ == '__main__':
             num_epoch=1,
             batch_size=4,
             learning_rate=3e-6,
-            shuffle=True)
-        
-        test(tokenizer=tokenizer,
-             model=peft_model,
-             scoring_criterias=step1_criteria,
-             test_data_path=TEST_DATA_PATH,
-             evaluate_data_path=EVALUATE_DATA_PATH
-             )
+            shuffle=True,
+            start_index=int(start_index),
+            end_index=int(end_index))
     if setting_option == '3':
         test(tokenizer=tokenizer,
              model=peft_model,
