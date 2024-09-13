@@ -706,8 +706,8 @@ if __name__ == '__main__':
             scoring_criteria=step1_criteria,
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
-            batch_size=4,
-            learning_rate=3e-6,
+            batch_size=1,
+            learning_rate=3e-7,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))
