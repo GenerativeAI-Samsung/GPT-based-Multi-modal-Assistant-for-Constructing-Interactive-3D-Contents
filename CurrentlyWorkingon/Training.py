@@ -90,7 +90,8 @@ Each asset is described with a concise name (x) and a detailed visual descriptio
     {step1_answer_format}
     ------------------------------------------------------------------------
 """
-        processed_sample += "\nRespone:" 
+        processed_sample += "\nRespone:"
+        processed_sample += "\nobject_list = ["
         processed_batch.append(processed_sample)
     
     return {"processed_batch": processed_batch, 
