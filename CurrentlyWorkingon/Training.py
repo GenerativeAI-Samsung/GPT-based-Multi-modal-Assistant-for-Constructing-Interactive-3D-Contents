@@ -91,7 +91,6 @@ Each asset is described with a concise name (x) and a detailed visual descriptio
     ------------------------------------------------------------------------
 """
         processed_sample += "\nRespone:"
-        processed_sample += "\nobject_list = ["
         processed_batch.append(processed_sample)
     
     return {"processed_batch": processed_batch, 
@@ -105,9 +104,11 @@ def step1_crop_respone(batch):
             temp2 = temp1.split('object_list = [')[1]
             temp3 = temp2.split(']')[0]
             temp = 'object_list = [' + temp3 + ']'
+            print(f"respone: {temp}")
             cropped_respone_batch.append(temp)
         else:
             cropped_respone_batch.append("object_list = []")
+            print(f"respone: {temp}")
     return cropped_respone_batch
 
 def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_criterias):
@@ -392,7 +393,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             model_chunk_output = model_forward(inputs=model_inputs, model=model)
             # base_model_chunk_output = base_model_forward(inputs=base_model_inputs, base_mode=base_model)
             
-            print(f"model_chunk_output: {model_chunk_output.logits} dimension={model_chunk_output.logits.shape} requires_grad={model_chunk_output.logits.requires_grad}")
+            # print(f"model_chunk_output: {model_chunk_output.logits} dimension={model_chunk_output.logits.shape} requires_grad={model_chunk_output.logits.requires_grad}")
             # print(f"base_model_chunk_output: {base_model_chunk_output.logits} requires_grad={base_model_chunk_output.logits.requires_grad}")
 
             # Caculate KL diverage loss
@@ -403,14 +404,14 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             soft_max = nn.Softmax(dim=-1)
 
             # Caculate total loss
-            total_loss = (-torch.log(rewarding_score) * soft_max(model_chunk_output.logits)).sum()
+            total_loss = (-torch.log(rewarding_score) * soft_max(model_chunk_output.logits)).sum() / model_chunk_output.logits.shape[1] 
             # Backward
             if not torch.isnan(total_loss).any():
                 total_loss.backward()
-                history.append(total_loss.clone().detach())                
+                history.append(rewarding_score - 0.5)                
             # Print out value reference by outputs variable
             print("------------------caculate_loss_and_do_gradient_accumulation------------------")
-            print(f"model_inputs: {model_inputs}")
+            # print(f"model_inputs: {model_inputs}")
             # print(f"base_model_inputs: {base_model_inputs}")
             print(f"total_loss: {total_loss} requires_grad={total_loss.requires_grad}")
             referrers_model_forward = gc.get_referrers(model_chunk_output)
@@ -708,7 +709,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=1,
-            learning_rate=3e-7,
+            learning_rate=2e-7,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))
