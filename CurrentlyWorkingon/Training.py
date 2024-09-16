@@ -105,6 +105,7 @@ def step1_crop_respone(batch):
             temp3 = temp2.split(']')[0]
             temp = 'object_list = [' + temp3 + ']'
             print(f"respone: {temp}")
+            cropped_respone_batch.append(temp)
         else:
             cropped_respone_batch.append("object_list = []")
             print(f"respone: {temp}")
