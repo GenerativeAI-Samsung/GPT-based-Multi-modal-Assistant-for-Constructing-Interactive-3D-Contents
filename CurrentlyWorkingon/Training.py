@@ -105,10 +105,6 @@ def step1_crop_respone(batch):
             temp3 = temp2.split(']')[0]
             temp = 'object_list = [' + temp3 + ']'
             print(f"respone: {temp}")
-            if ('{"name": x1, "description": y1}' in temp):
-                cropped_respone_batch.append("object_list = []")
-            else:
-                cropped_respone_batch.append(temp)
         else:
             cropped_respone_batch.append("object_list = []")
             print(f"respone: {temp}")
@@ -118,6 +114,12 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
     rewarding_prompts = []
     formatted_criteria = "".join(f"\t-{item['name']}: {item['description']}\n" for item in scoring_criterias)
     for prompt, response in zip(processed_batch["processed_batch"], cropped_respone_batch):
+        
+        if ('{"name": x1, "description": y1}' in response):
+            respone_temp = "object_list = []"
+        else:
+            respone_temp = response
+        
         rewarding_prompt = f"""
     You are an evaluator. Your task is to grade the response provided by the responder to the user's request based on specific criteria, using a 100-point scale.
     The criteria include:
@@ -128,7 +130,7 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
 
     User's request: "{prompt}"
 
-    Responder's answer: "{response}"
+    Responder's answer: "{respone_temp}"
 
     After determining your answer, structure them in this format:
     rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
