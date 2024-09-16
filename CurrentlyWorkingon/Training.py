@@ -323,7 +323,7 @@ def exec_and_caculate_average(rewarding_score_text):
         for reward_item in local_vars['rewarding_score']:
             temp += reward_item['score']
             print(f"temp: {temp}")
-        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.5))
+        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.2))
     return average_rewarding_score
 
 def train_prompt(splitted_model_respones, batch):
