@@ -404,7 +404,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             soft_max = nn.Softmax(dim=-1)
 
             # Caculate total loss
-            total_loss = (-torch.log(rewarding_score) * soft_max(model_chunk_output.logits)).sum() / model_chunk_output.logits.shape[1] 
+            total_loss = (-torch.log(rewarding_score) * soft_max(model_chunk_output.logits) / model_chunk_output.logits.shape[1]).sum()  
             # Backward
             if not torch.isnan(total_loss).any():
                 total_loss.backward()
@@ -709,7 +709,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=1,
-            learning_rate=2e-7,
+            learning_rate=3e-7,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))
