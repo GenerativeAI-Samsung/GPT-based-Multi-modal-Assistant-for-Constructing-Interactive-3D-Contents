@@ -314,28 +314,35 @@ def base_model_forward(inputs, base_mode):
 
 def exec_and_caculate_average(rewarding_score_text):
     average_rewarding_score = []
+    criticism = []
     for item in rewarding_score_text:
         # Local variables
         local_vars = {}
         print(item)
         exec(item, {}, local_vars)
         temp = 0
+        temp_list = []
         for reward_item in local_vars['rewarding_score']:
             temp += reward_item['score']
+            temp_list.append(zip(reward_item['name'], reward_item['score']))
             print(f"temp: {temp}")
         average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.2))
-    return average_rewarding_score
+        criticism.append(temp_list)
+    return average_rewarding_score, criticism
 
-def train_prompt(splitted_model_respones, batch):
+def train_prompt(splitted_model_respones, batch, criticism):
     output = []
     for i, respone in enumerate(splitted_model_respones):
         prompt = f"""
 Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
 Script: {batch[i]["query"]}
 
-Respone:
+Response:
 {respone}
-"""
+
+Criticism:
+{''.join(f'{x}\n' for x in criticism[i])}
+    """
         output.append(prompt)
     return output
 
@@ -368,7 +375,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
     rewarding_score_text = asyncio.run(generate_rewarding_score(rewarding_prompt=rewarding_prompt))
 
     #exec_and_caculate_average
-    average_rewarding_score = exec_and_caculate_average(rewarding_score_text=rewarding_score_text)
+    average_rewarding_score, criticism = exec_and_caculate_average(rewarding_score_text=rewarding_score_text)
     print(f"average_rewarding_score: {average_rewarding_score}")
     # -----------------------------------------------------------------------------
 
@@ -376,7 +383,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
     splitted_model_respones = split_response_with_prompt(batch=model_respones)
     # splitted_base_model_respones = split_response_with_prompt(batch=base_model_responses)
     
-    prompted_splitted_model_respones = train_prompt(splitted_model_respones=splitted_model_respones, batch=batch)
+    prompted_splitted_model_respones = train_prompt(splitted_model_respones=splitted_model_respones, batch=batch, criticism=criticism)
 
     # split_into_chunks
     # chunks_batch = split_into_chunks(tokenizer=tokenizer, model_response_batch=splitted_model_respones, base_model_respose_batch=splitted_base_model_respones)
