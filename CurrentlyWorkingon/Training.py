@@ -712,7 +712,7 @@ if __name__ == '__main__':
         peft_model = PeftModel.from_pretrained(
                 base_model,
                 adapter_folder,
-                is_trainable=True)
+                is_trainable=False)
     
     if setting_option == '1' or setting_option == '2':
         train(tokenizer=tokenizer,
@@ -722,7 +722,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=1,
-            learning_rate=3e-7,
+            learning_rate=8e-7,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))
