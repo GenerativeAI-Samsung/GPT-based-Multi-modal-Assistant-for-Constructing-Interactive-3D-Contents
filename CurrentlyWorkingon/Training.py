@@ -332,8 +332,9 @@ def exec_and_caculate_average(rewarding_score_text):
             temp += reward_item['score']
             temp_list.append((reward_item['name'], reward_item['score']))
             print(f"temp: {temp}")
+            temp_list.append(f"name: {reward_item['name']}, score: {reward_item['score']}, description: {reward_item['description']}\n")
         average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.2))
-        criticism.append(f"name: {reward_item["name"]}, score: {reward_item["score"]}, description: {reward_item["description"]}\n")
+        criticism.append(temp_list)
     return average_rewarding_score, criticism
 
 def train_prompt(splitted_model_respones, batch, criticism):
@@ -386,10 +387,10 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
     # -----------------------------------------------------------------------------
 
     # split_response_with_prompt
-    splitted_model_respones = split_response_with_prompt(batch=model_respones)
+    # splitted_model_respones = split_response_with_prompt(batch=model_respones)
     # splitted_base_model_respones = split_response_with_prompt(batch=base_model_responses)
     
-    prompted_splitted_model_respones = train_prompt(splitted_model_respones=splitted_model_respones, batch=batch, criticism=criticism)
+    prompted_splitted_model_respones = train_prompt(splitted_model_respones=cropped_batch, batch=batch, criticism=criticism)
 
     # split_into_chunks
     # chunks_batch = split_into_chunks(tokenizer=tokenizer, model_response_batch=splitted_model_respones, base_model_respose_batch=splitted_base_model_respones)
