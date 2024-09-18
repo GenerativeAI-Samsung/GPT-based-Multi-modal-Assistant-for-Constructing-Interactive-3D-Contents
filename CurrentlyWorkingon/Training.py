@@ -333,7 +333,7 @@ def exec_and_caculate_average(rewarding_score_text):
             temp_list.append((reward_item['name'], reward_item['score']))
             print(f"temp: {temp}")
         average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.2))
-        criticism.append(temp_list)
+        criticism.append(f"name: {reward_item["name"]}, score: {reward_item["score"]}, description: {reward_item["description"]}\n")
     return average_rewarding_score, criticism
 
 def train_prompt(splitted_model_respones, batch, criticism):
@@ -347,7 +347,7 @@ Response:
 {respone}
 
 Criticism:
-{''.join((str(x) + ': ' + str(y)) for x, y in criticism[i])}
+{''.join(x for x in criticism[i])}
     """
         output.append(prompt)
     return output
@@ -722,7 +722,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=1,
-            learning_rate=3e-4,
+            learning_rate=1e-4,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))
