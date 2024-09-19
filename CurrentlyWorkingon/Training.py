@@ -330,7 +330,6 @@ def exec_and_caculate_average(rewarding_score_text):
         temp_list = []
         for reward_item in local_vars['rewarding_score']:
             temp += reward_item['score']
-            temp_list.append((reward_item['name'], reward_item['score']))
             print(f"temp: {temp}")
             temp_list.append(f"name: {reward_item['name']}, score: {reward_item['score']}, description: {reward_item['description']}\n")
         average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.2))
