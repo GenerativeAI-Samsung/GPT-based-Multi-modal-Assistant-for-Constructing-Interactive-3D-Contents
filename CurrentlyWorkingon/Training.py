@@ -339,35 +339,18 @@ def exec_and_caculate_average(rewarding_score_text):
 def train_prompt(splitted_model_respones, batch, criticism):
     output = []
     for i, respone in enumerate(splitted_model_respones):
-        try: 
-            exec(respone)
-            prompt = f"""
-    Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
-    Script: {batch[i]["query"]}
+        prompt = f"""
+Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
+Script: {batch[i]["query"]}
 
-    Response:
-    {respone}
+Response:
+{respone}
 
-    Criticism:
-    {''.join(x for x in criticism[i])}
-        """
-            print(f"train_prompt: {prompt}")
-            output.append(prompt)
-        except:
-            prompt = f"""
-    Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
-    Script: {batch[i]["query"]}
-
-    Response:
-    {respone}
-
-    Criticism:
-    {''.join(x for x in criticism[i])}
-    
-    Your answer is not in a format that can be executed as Python code.
-        """
-            print(f"train_prompt: {prompt}")
-            output.append(prompt)
+Criticism:
+{''.join(x for x in criticism[i])}
+    """
+        print(f"train_prompt: {prompt}")
+        output.append(prompt)
     return output
 
 def caculate_KL_diverage_loss(model_chunk_logit, base_model_chunk_logit):
