@@ -1,3 +1,5 @@
+from LanguageModel import ScenePlanningModel
+
 from dataclasses import dataclass
 from typing import Tuple, List, Dict, Set
 
@@ -7,6 +9,7 @@ import numpy as np
 from mathutils import Vector
 import random
 import bpy
+import json
 
 # Thư viện các ràng buộc, khởi tạo môi trường tĩnh và vị trí ban đầu các đối tượng
 # -------------------------------------------------------------------------------------------------
@@ -754,95 +757,75 @@ class Movement():
 
 # -------------------------------------------------------------------------------------------------
 
-
 if __name__ == '__main__':
-    # Này là response lấy từ "main_user_interact"
-    input = """
-To create a 3D scene for the text "A girl plays with her dog in the garden," we can use the following details:
+    # Đọc respone từ user_interact_result.json
+    print("------------------------------------------------------")
+    print("Loading request...")
+    with open('user_interact_result.json', 'r') as openfile:
+        input_text = json.load(openfile)
+    print("Done!")
+    print("------------------------------------------------------")
 
-    The Setting:
-        The scene takes place in a garden, which includes a grassy field.
-        Consider adding elements to make it look like a children's playground.
-
-    The Girl:
-        She is young, possibly a little girl or a pre-teen.
-        She is wearing a yellow sweater, a dress, and a pair of high heels.
-        Her clothing is mostly bright and colorful.
-
-    The Dog:
-        The dog is medium-sized.
-        The dog can be portrayed standing or interacting with the girl.
-
-    Interaction:
-        The girl is playing with the dog, so they should be interacting with each other in a playful manner.
-
-Based on these details, you can imagine a vibrant and joyful scene. 
-The girl, dressed in her colorful outfit, is happily playing with her medium-sized dog in a lush, green garden. 
-The garden might include elements of a playground to enhance the playful atmosphere.
-"""
+    # Loading Model
+    print("\n------------------------------------------------------")
+    print("Loading Llama3 8B with adapter...")
+    MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
+    adapter_layers = []
+    scene_plan_model = ScenePlanningModel(MODEL_ID=MODEL_ID, adapter_layers=adapter_layers)
+    print("Done!")
+    print("------------------------------------------------------")
 
     # Phase 1: Xác định các vật thể có xuất hiện trong video
-    context = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to list the assets individually, ensuring each is a single unit (avoiding composite sets). 
-After listing the assets, structure them in this format:
-object_list = [
-  {{"name": x1, "description": y1}},
-  {{"name": x2, "description": y2}},
-  {{"name": x3, "description": y3}},
-  ...
-]
-Each asset is described with a concise name (x) and a detailed visual description (y). 
-Avoid using normal text; format your response strictly as specified above.
+    print("\n------------------------------------------------------")
+    print("Identify the objects that will appear in the 3D scene.")
+    step1_respone = scene_plan_model.step1_generate(batch=[input_text])
+    print("Done!")
+    print("------------------------------------------------------")
 
-Natural language description: {input}
-"""
-
-    output_phase_1 = """
-object_list = [
-  {"name": "garden_grassy_field", "description": "A large, lush, green grassy field serving as the base of the garden."},
-  {"name": "playground_slide", "description": "A brightly colored children's slide made of plastic, with a smooth surface and gentle slope."},
-  {"name": "playground_swing", "description": "A single swing with a wooden seat and metal chains, positioned in the garden area."},
-  {"name": "little_girl", "description": "A young girl, around 7-10 years old, wearing a bright yellow sweater, a colorful dress, and high heels. She has an energetic and playful appearance."},
-  {"name": "medium_dog", "description": "A medium-sized dog with a friendly demeanor, either standing or playfully interacting with the girl."}
-]
-"""
-    exec(output_phase_1)
+    # Viết ra file .json và yêu cầu người dùng check lại
+    json_object = json.dumps(step1_respone, indent=4)
+    with open("step1_respone.json", "w") as outfile:
+        outfile.write(json_object)
+    print("You should check respone in step1_respone.json to make sure that response reliable and executable!")
+    control = None
+    while (control != 'continue'):
+        control = input('Press "continue" if done: ')
+    
+    # Đọc lại file .json để đến bước tiếp theo
+    with open('step1_respone.json', 'r') as openfile:
+        step1_respone = json.load(openfile)
+    print("------------------------------------------------------")
+    exec(step1_respone[0])
 
     # Phase 3: Khởi tạo môi trường sự kiện
     
     # Phase 3.1: Phân loại các vật thể vừa xác định thành 2 trường: 
         # Base Evironments objects
         # Main character and Creatures objects
-    context = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural descriptions.
-Your job is to classify the objects from the objects list below and natural descriptions into two groups: one group for objects used to create the base environment, and another group for objects that are the main characters and creatures in the animation.
 
-Objects list:
-{output_phase_1}
+    print("\n------------------------------------------------------")
+    print("Classify the types of the identified objects.")
+    step2_respone = scene_plan_model.step2_generate(batch=[input_text])
+    print("Done!")
+    print("------------------------------------------------------")
 
-Natural language description: {input}
+    # Viết ra file .json và yêu cầu người dùng check lại
+    json_object = json.dumps(step2_respone, indent=4)
+    with open("step2_respone.json", "w") as outfile:
+        outfile.write(json_object)
+    print("You should check respone in step2_respone.json to make sure that response reliable and executable!")
+    control = None
+    while (control != 'continue'):
+        control = input('Press "continue" if done: ')
+    
+    # Đọc lại file .json để đến bước tiếp theo
+    with open('step2_respone.json', 'r') as openfile:
+        step2_respone = json.load(openfile)
+    print("------------------------------------------------------")
+    exec(step2_respone[0])   
+# ----------------------------------------------------------------------------------
+# Cho ngày mai
 
-After listing the assets, structure them in this format:
-env_objs = [name_obj1, name_obj2, ...]
-main_objs = [name_obj4, name_obj5, ...]
-
-Avoid using normal text; format your response strictly as specified above.
-"""
-
-    output_phase_3_1 = """
-env_objs = [
-  "garden_grassy_field",
-  "playground_slide",
-  "playground_swing"
-]
-
-main_objs = [
-  "little_girl",
-  "medium_dog"
-]
-    """
-    exec(output_phase_3_1)
 
     # Phase 3.2: Khởi tạo môi trường
     # Phase 3.2.1: Sinh ra mô tả chung về layout

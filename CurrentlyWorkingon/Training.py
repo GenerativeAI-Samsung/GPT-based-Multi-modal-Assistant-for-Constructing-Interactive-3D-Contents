@@ -290,7 +290,7 @@ def split_into_chunks(tokenizer, model_response_batch, base_model_respose_batch,
         chunks_batch.append(result)
     return chunks_batch
 
-def split_into_chunks_v2(tokenizer, model_response_batch, length=500):
+def split_into_chunks_v2(tokenizer, model_response_batch, length=650):
     chunks_batch = []
     for model_respone in model_response_batch:
         inputs = tokenizer(model_respone, return_tensors="pt", padding=True)
@@ -306,7 +306,7 @@ def split_into_chunks_v2(tokenizer, model_response_batch, length=500):
             model_chunks.append(temp)
 
         # Finish processing one sentence, append to chunks_batch
-        chunks_batch.append(model_chunks)
+        chunks_batch.append(model_chunks[0])
     return chunks_batch
 
 def model_forward(inputs, model):
@@ -343,11 +343,11 @@ def train_prompt(splitted_model_respones, batch, criticism):
 Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
 Script: {batch[i]["query"]}
 
-Response:
-{respone}
-
 Criticism:
 {''.join(x for x in criticism[i])}
+
+Response:
+{respone}
     """
         print(f"train_prompt: {prompt}")
         output.append(prompt)

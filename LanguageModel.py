@@ -4,6 +4,7 @@ import torch.nn as nn
 from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
 from transformers import AutoProcessor
 from transformers import TextStreamer
+from peft import PeftModel
 
 from PIL import Image
 
@@ -47,7 +48,7 @@ class VisionLangugeModel(nn.Module):
 class UserInteractModel(nn.Module):
     def __init__(self, MODEL_ID):
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID,
-                                                    model_max_length=1536)
+                                                       model_max_length=1536)
         self.model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
     
     def generate(self, batch):
@@ -64,5 +65,215 @@ class UserInteractModel(nn.Module):
         # Decode the generated tokens back to text
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
         return respone
-        
 
+class ScenePlanningModel(nn.Module):
+    def __init__(self, MODEL_ID, adapter_layers):
+        self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID,
+                                                       model_max_length=1536,
+                                                       padding_side="right",
+                                                       use_fast=False)
+        self.base_model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
+        self.smart_tokenizer_and_embedding()
+
+        self.step1_layer = PeftModel.from_pretrained(self.base_model,
+                                                    adapter_layers[0],
+                                                    is_trainable=False)
+
+        self.step2_layer = PeftModel.from_pretrained(self.base_model,
+                                                    adapter_layers[1],
+                                                    is_trainable=False)
+
+        self.step3_layer = PeftModel.from_pretrained(self.base_model,
+                                                    adapter_layers[2],
+                                                    is_trainable=False)
+
+        self.step4_layer = PeftModel.from_pretrained(self.base_model,
+                                                    adapter_layers[3],
+                                                    is_trainable=False)
+        
+        self.step5_layer = PeftModel.from_pretrained(self.base_model,
+                                                    adapter_layers[4],
+                                                    is_trainable=False)
+
+    def add_special_tokens(self):
+        default_pad_token = "[PAD]"
+        default_eos_token = "</s>"
+        default_bos_token = "<s>"
+        default_unk_token = "<unk>"
+
+        # Adding special token to tokenizer
+        special_tokens_dict = dict()
+        if self.tokenizer.pad_token is None:
+            special_tokens_dict["pad_token"] = default_pad_token
+        if self.tokenizer.eos_token is None:
+            special_tokens_dict["eos_token"] = default_eos_token
+        if self.tokenizer.bos_token is None:
+            special_tokens_dict["bos_token"] = default_bos_token
+        if self.tokenizer.unk_token is None:
+            special_tokens_dict["unk_token"] = default_unk_token
+    
+    
+    def smart_tokenizer_and_embedding(self):
+        num_new_tokens = self.add_special_tokens()
+        self.base_model.resize_token_embeddings(len(self.tokenizer))
+
+        if num_new_tokens > 0:
+            input_embeddings = self.base_model.get_input_embeddings().weight.data
+            output_embeddings = self.base_model.get_output_embeddings().weight.data
+
+            input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+            output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+
+            input_embeddings[-num_new_tokens:] = input_embeddings_avg
+            output_embeddings[-num_new_tokens:] = output_embeddings_avg
+
+    def step1_preprocess_data(self, batch):
+        processed_batch = []
+
+        step1_answer_format = """
+object_list = [
+{"name": x1, "description": y1},
+{"name": x2, "description": y2},
+{"name": x3, "description": y3},
+...
+]
+Each asset is described with a concise name (x) and a detailed visual description (y).
+    """
+        for sample in batch:
+            processed_sample = f"""
+You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
+Your job is to list the assets individually, ensuring each is a single unit (avoiding composite sets). 
+
+Natural language description: "{sample}"    
+    
+After listing the assets, structure them in this format:
+{step1_answer_format}
+
+Avoid using normal text; format your response strictly as specified above.
+    """
+            processed_sample += f"""
+    -------------------------------------------------------------------------
+    REMEMBER TO ADVOID USING NORMAL AND STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+    {step1_answer_format}
+    ------------------------------------------------------------------------
+    """
+            processed_sample += "\nRespone:"
+            processed_batch.append(processed_sample)
+        
+        return processed_batch
+
+    def step1_crop_respone(self, batch):
+        cropped_respone_batch = []
+        for respone in batch:
+            temp1 = respone.split('\nRespone:', 1)[1]
+            if ('object_list = [' in temp1):
+                temp2 = temp1.split('object_list = [')[1]
+                temp3 = temp2.split(']')[0]
+                temp = 'object_list = [' + temp3 + ']'
+                print(f"respone: {temp}")
+                cropped_respone_batch.append(temp)
+            else:
+                cropped_respone_batch.append("object_list = []")
+                print(f"respone: object_list = []")
+        return cropped_respone_batch
+
+    def step1_generate(self, batch):
+        # Prompt for input
+        processed_batch = self.step1_preprocess_data(batch)
+
+        # Tokenize the input prompt
+        inputs = self.tokenizer(processed_batch, return_tensors="pt", padding=True)
+
+        # Move tensors to the appropriate device (e.g., GPU if available)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        # Generating
+        outputs = self.step1_layer.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+
+        # Decode the generated tokens back to text
+        respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
+        
+        # Crop output from response
+        respone = self.step1_crop_respone(respone)
+        
+        return respone
+
+
+    def step2_preprocess_data(self, batch, objects_list):
+        processed_batch = []
+
+        step2_answer_format = """
+object_classified_list = [{"name": "base_environment", "objects": (obj1, obj2, ...)},
+                        {"name": "main_characters_and_creatures", "objects": (obj8, obj9, ...)},
+                        {"name": "illumination", "objects": (obj15, obj16, ...)},
+                        {"name": "camera_view", "objects": (obj21, obj22, ...)}]
+    """
+        for sample in batch:
+            processed_sample = f"""
+You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural descriptions.
+Your job is to classify the objects from the objects list below and natural descriptions into four groups: 
+1. Base environment: Objects that form the background, scenery, or surroundings.
+2. Main characters and creatures: The primary characters and creatures featured in the animation.
+3. Illumination: Objects or elements responsible for providing or adjusting light in the scene.
+4. Audio: Objects or systems that generate or manipulate sound.
+5. Camera view: Objects or elements involved in camera positioning, movement, or focus.
+
+Objects list:
+{objects_list}
+
+Natural language description: {sample}
+
+After listing the assets, structure them in this format:
+{step2_answer_format}
+
+Avoid using normal text; format your response strictly as specified above.
+    """
+            processed_sample += f"""
+    -------------------------------------------------------------------------
+    REMEMBER TO ADVOID USING NORMAL AND STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+    {step2_answer_format}
+    ------------------------------------------------------------------------
+    """
+            processed_sample += "\nRespone:"
+            processed_batch.append(processed_sample)
+        
+        return processed_batch
+    
+    def step2_crop_respone(self, batch):
+        cropped_respone_batch = []
+        for respone in batch:
+            temp1 = respone.split('\nRespone:', 1)[1]
+            if ('object_classified_list = [' in temp1):
+                temp2 = temp1.split('object_classified_list = [')[1]
+                temp3 = temp2.split(']')[0]
+                temp = 'object_classified_list = [' + temp3 + ']'
+                print(f"respone: {temp}")
+                cropped_respone_batch.append(temp)
+            else:
+                cropped_respone_batch.append("object_classified_list = []")
+                print(f"respone: object_classified_list = []")
+        return cropped_respone_batch
+
+    def step2_generate(self, batch, objects_list):
+        # Prompt for input
+        processed_batch = self.step2_preprocess_data(batch, objects_list)
+
+        # Tokenize the input prompt
+        inputs = self.tokenizer(processed_batch, return_tensors="pt", padding=True)
+
+        # Move tensors to the appropriate device (e.g., GPU if available)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        # Generating
+        outputs = self.step2_layer.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+
+        # Decode the generated tokens back to text
+        respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
+        
+        # Crop output from response
+        respone = self.step2_crop_respone(respone)
+        
+        return respone
+    
