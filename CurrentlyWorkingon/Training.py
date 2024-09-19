@@ -350,6 +350,7 @@ Response:
 Criticism:
 {''.join(x for x in criticism[i])}
     """
+        print(f"train_prompt: {prompt}")
         output.append(prompt)
     return output
 
@@ -723,7 +724,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=1,
-            learning_rate=1e-4,
+            learning_rate=6e-5,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))
