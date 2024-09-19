@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from transformers import AutoModel
+from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
 from transformers import AutoProcessor
 from transformers import TextStreamer
 
@@ -43,3 +43,26 @@ class VisionLangugeModel(nn.Module):
                                          eos_token_id=self.processor.tokenizer.eos_token_id, 
                                          streamer=streamer)
         return self.processor.tokenizer.decode(output[0]).replace(prompt, "").replace("<|im_end|>", "")
+
+class UserInteractModel(nn.Module):
+    def __init__(self, MODEL_ID):
+        self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID,
+                                                    model_max_length=1536)
+        self.model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
+    
+    def generate(self, batch):
+        # Tokenize the input prompt
+        inputs = self.tokenizer(batch, return_tensors="pt", padding=True)
+
+        # Move tensors to the appropriate device (e.g., GPU if available)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        # Generating
+        outputs = self.model.generate(**inputs, max_length=1024, output_hidden_states=True, return_dict_in_generate=True)
+
+        # Decode the generated tokens back to text
+        respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
+        return respone
+        
+

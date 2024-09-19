@@ -5,13 +5,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
 class RAG_module():
-    def __init__(self, chunk_size=100, chunk_overlap=20, length_function=len):
+    def __init__(self, chunk_size=500, chunk_overlap=20, length_function=len, embedding_dicts=[]):
         self.text_splitter = RecursiveCharacterTextSplitter(
                     chunk_size = chunk_size,
                     chunk_overlap = chunk_overlap,
                     length_function = length_function)
         self.model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-        self.embedding_dicts = []
+        self.embedding_dicts = embedding_dicts
         self.cos = nn.CosineSimilarity(dim=1, eps=1e-6)
 
     def initalize_embedding_database(self, text):
@@ -24,7 +24,7 @@ class RAG_module():
             embedding_dict = {"sentence": content, "embedding": embedding.tolist()}
             self.embedding_dicts.append(embedding_dict)
     
-    def find_top_k_embedding(self, query, k=5):
+    def find_top_k_embedding(self, query, k=20):
         query_embedding = self.model.encode(query, convert_to_tensor=True)
         scores = []
         for chunk in self.embedding_dicts:
