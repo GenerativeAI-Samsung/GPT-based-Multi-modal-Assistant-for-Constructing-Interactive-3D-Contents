@@ -306,7 +306,7 @@ def split_into_chunks_v2(tokenizer, model_response_batch, length=650):
             model_chunks.append(temp)
 
         # Finish processing one sentence, append to chunks_batch
-        chunks_batch.append(model_chunks[0])
+        chunks_batch.append(model_chunks)
     return chunks_batch
 
 def model_forward(inputs, model):
@@ -343,11 +343,11 @@ def train_prompt(splitted_model_respones, batch, criticism):
 Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
 Script: {batch[i]["query"]}
 
-Criticism:
-{''.join(x for x in criticism[i])}
-
 Response:
 {respone}
+
+Criticism:
+{''.join(x for x in criticism[i])}
     """
         print(f"train_prompt: {prompt}")
         output.append(prompt)
