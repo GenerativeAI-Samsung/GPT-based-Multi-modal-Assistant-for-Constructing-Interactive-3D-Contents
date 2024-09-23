@@ -805,7 +805,7 @@ if __name__ == '__main__':
 
     print("\n------------------------------------------------------")
     print("Classify the types of the identified objects.")
-    step2_respone = scene_plan_model.step2_generate(batch=[input_text])
+    step2_respone = scene_plan_model.step2_generate(batch=[input_text], objects_list=step1_respone[0])
     print("Done!")
     print("------------------------------------------------------")
 
@@ -823,109 +823,59 @@ if __name__ == '__main__':
         step2_respone = json.load(openfile)
     print("------------------------------------------------------")
     exec(step2_respone[0])   
-# ----------------------------------------------------------------------------------
-# Cho ngày mai
-
 
     # Phase 3.2: Khởi tạo môi trường
     # Phase 3.2.1: Sinh ra mô tả chung về layout
-    context = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to create a concrete plan to put them into the scene from the objects list below and natural descriptions.
-Please think step by step, and give me a multi-step plan to put assets into the
-scene.
+    print("\n------------------------------------------------------")
+    print("Generate a general description of the layout.")
+    step3_respone = scene_plan_model.step3_generate(batch=[input_text], 
+                                                    objects_list=step1_respone[0], 
+                                                    object_classified_list=step2_respone[0])
+    print("Done!")
+    print("------------------------------------------------------")
 
-Objects list:
-{output_phase_1}
-
-Natural language description: {input}
-
-For each step, structure your output as:
-layout_plan_i = {{
-"title": title_i,
-"asset_list": [asset_name_1, asset_name_2],
-"description": desc_i
-}}
-
-where title_i is the high-level name for this step, and desc is detailed visual text description of what it shall look like after layout. 
-Avoid using normal text; format your response strictly as specified above.
-"""
-
-    output_phase_3_2_1 ="""
-layout_plan_1 = {
-  "title": "Set Up Garden Base",
-  "asset_list": ["garden_grassy_field"],
-  "description": "Place the large, lush, green grassy field as the base of the garden. Ensure it covers the entire scene to provide a natural, grassy environment."
-}
-
-layout_plan_2 = {
-  "title": "Add Playground Equipment",
-  "asset_list": ["playground_slide", "playground_swing"],
-  "description": "Position the brightly colored children's slide and the single swing within the garden area. Place the slide to one side, with the swing slightly in the background, creating a playful and engaging playground atmosphere."
-}
-
-layout_plan_3 = {
-  "title": "Place Main Characters",
-  "asset_list": ["little_girl", "medium_dog"],
-  "description": "Place the young girl, dressed in a bright yellow sweater, colorful dress, and high heels, interacting with the medium-sized dog. Position the girl near the playground equipment, playing with the dog to show a dynamic and joyful interaction."
-}
-"""   
-    exec(output_phase_3_2_1)
+    # Viết ra file .json và yêu cầu người dùng check lại
+    json_object = json.dumps(step3_respone, indent=4)
+    with open("step3_respone.json", "w") as outfile:
+        outfile.write(json_object)
+    print("You should check respone in step3_respone.json to make sure that response reliable and executable!")
+    control = None
+    while (control != 'continue'):
+        control = input('Press "continue" if done: ')
+    
+    # Đọc lại file .json để đến bước tiếp theo
+    with open('step3_respone.json', 'r') as openfile:
+        step3_respone = json.load(openfile)
+    print("------------------------------------------------------")
+    exec(step3_respone[0]) 
 
     # Phase 3.2.2: Sinh ra vị trí location khởi tạo của các vật thể và các ràng buộc giữa các vật thể dựa vào lay_out_plan
-    context = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to suggest the initial position of objects and their constraints based on the objects list, the natural descriptions, the constraint list and the layout plan.
-Please think step by step.
+    print("\n------------------------------------------------------")
+    print("Generate a general description of the layout.")
+    step4_respone = scene_plan_model.step4_generate(batch=[input_text], 
+                                                    base_environment=object_classified_list["base_environment"], 
+                                                    main_characters_and_creatures=object_classified_list["main_characters_and_creatures"],
+                                                    layout_plan=step3_respone[0])
+    print("Done!")
+    print("------------------------------------------------------")
 
-Objects list:
-{output_phase_1}
+    # Viết ra file .json và yêu cầu người dùng check lại
+    json_object = json.dumps(step4_respone, indent=4)
+    with open("step4_respone.json", "w") as outfile:
+        outfile.write(json_object)
+    print("You should check respone in step4_respone.json to make sure that response reliable and executable!")
+    control = None
+    while (control != 'continue'):
+        control = input('Press "continue" if done: ')
+    
+    # Đọc lại file .json để đến bước tiếp theo
+    with open('step4_respone.json', 'r') as openfile:
+        step4_respone = json.load(openfile)
+    print("------------------------------------------------------")
+    exec(step4_respone[0]) 
 
-Natural language description: {input}
-
-Constraints: 
-proximity_score(object1: Layout, object2: Layout): A constraint enforcing the closeness of two objects, e.g., a chair near a table.
-direction_score(object1: Layout, object2: Layout): The angle of one object is targeting at the other.
-alignment_score(assets: List[Layout], axis: str): Ensuring objects align along a common axis (x, y, z), e.g., paintings aligned vertically on a wall.
-symmetry_score(assets: List[Layout], axis: str): Mirroring objects along an axis (x, y, z), e.g., symmetrical placement of lamps on either side of a bed.
-parallelism_score(assets: List[Layout]): Objects parallel to each other, suggesting direction, e.g., parallel rows of seats in a theater.
-perpendicularity_score(object1: Layout, object2: Layout): Objects intersecting at a right angle, e.g., a bookshelf perpendicular to a desk.
-rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float, float]): a list of objects rotate a cirtain point, e.g., rotating chairs around a meeting table.
-repeat_object(original: Layout, direction: Tuple[float, float, float], repetitions: int, distance: float): Repeating patterns for rhythm or emphasis, e.g., a sequence of street lights.
-scale_group(objects: List[Layout], scale_factor: float): Adjusting object sizes for depth or focus, e.g., smaller background trees to create depth perception.
-
-Layout plan:
-{output_phase_3_2_1}   
-
-The answer should include 2 lists, initial_position and constraints, where initial_positions is a dictionary with keys as object names and values as their initial positions, and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
-
-After determining initial_position and constraints, structure them in this format:
-initial_position = {{key: value, ...}}
-constraints = [(constraint1, ("param1": "object1", ...)), ...]
-
-Avoid using normal text; format your response strictly as specified above.
-"""    
-
-    output_phase_3_2_2 = """
-initial_position = {
-  "garden_grassy_field": (0, 0, 0),
-  "playground_slide": (5, 0, 0),
-  "playground_swing": (8, 0, 0),
-  "little_girl": (6, 1, 0),
-  "medium_dog": (6, -1, 0)
-}
-
-constraints = [
-  ("proximity_score", {"object1": "playground_slide", "object2": "playground_swing"}),
-  ("proximity_score", {"object1": "little_girl", "object2": "medium_dog"}),
-  ("direction_score", {"object1": "little_girl", "object2": "medium_dog"}),
-  ("alignment_score", {"assets": ["playground_slide", "playground_swing"], "axis": "x"}),
-  ("perpendicularity_score", {"object1": "playground_slide", "object2": "playground_swing"}),
-  ("parallelism_score", {"assets": ["playground_slide", "playground_swing"]}),
-  ("rotation_uniformity_score", {"objects": ["playground_slide", "playground_swing"], "center": (0, 0, 0)})
-]
-"""    
-    exec(output_phase_3_2_2)
+# ------------------------------------------------------------------------------
+# Split in here
 
 # Phase 2: Import các vật thể từ trong database 3D object
     assets = {}
