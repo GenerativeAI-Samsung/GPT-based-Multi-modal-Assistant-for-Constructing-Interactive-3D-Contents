@@ -290,7 +290,7 @@ def split_into_chunks(tokenizer, model_response_batch, base_model_respose_batch,
         chunks_batch.append(result)
     return chunks_batch
 
-def split_into_chunks_v2(tokenizer, model_response_batch, length=600):
+def split_into_chunks_v2(tokenizer, model_response_batch, length=500):
     chunks_batch = []
     for model_respone in model_response_batch:
         inputs = tokenizer(model_respone, return_tensors="pt", padding=True)

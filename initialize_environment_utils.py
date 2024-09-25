@@ -22,4 +22,4 @@ class CLIP(nn.Module):
 
         return probs 
 
-# class DiffusionModel(nn.Module):
+class DiffusionModel(nn.Module):

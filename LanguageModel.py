@@ -207,6 +207,7 @@ Avoid using normal text; format your response strictly as specified above.
 object_classified_list = [{"name": "base_environment", "objects": (obj1, obj2, ...)},
                         {"name": "main_characters_and_creatures", "objects": (obj8, obj9, ...)},
                         {"name": "illumination", "objects": (obj15, obj16, ...)},
+                        {"name": "audio", "objects": (obj23, obj24, obj25)}
                         {"name": "camera_view", "objects": (obj21, obj22, ...)}]
 """
         for sample in batch:
@@ -396,11 +397,13 @@ scale_group(objects: List[Layout], scale_factor: float): Adjusting object sizes 
 Layout plan:
 {layout_plan}   
 
-The answer should include 2 lists, initial_position and constraints, where initial_positions is a dictionary with keys as object names and values as their initial positions, and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
+The answer should include 2 lists, initial_position_and_orientation and constraints, where initial_position_and_orientation is a list of dictionary with keys are object names, their initial positions and their initial orientation, and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
 
-After determining initial_position and constraints, structure them in this format:
-initial_position = {{key: value, ...}}
-constraints = [(constraint1, ("param1": "object1", ...)), ...]
+After determining initial_position_and_orientation and constraints, structure them in this format:
+initial_position_and_orientation = [{{"name": obj1, "position": obj1_position, "orientation": obj1_orientation}},
+                                    {{"name": obj2, "position": obj2_position, "orientation": obj2_orientation}},
+                                    ...]
+constraints = [(constraint1, {{"param1": "object1", ...}}), (constraint2, {{"param2": "object2", ...}}), ...]
 
 Avoid using normal text; format your response strictly as specified above.
 """    
