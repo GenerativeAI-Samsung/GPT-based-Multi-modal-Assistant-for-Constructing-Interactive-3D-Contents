@@ -732,5 +732,6 @@ if __name__ == '__main__':
              model=peft_model,
              scoring_criterias=step1_criteria,
              test_data_path=TEST_DATA_PATH,
-             evaluate_data_path=EVALUATE_DATA_PATH
+             evaluate_data_path=EVALUATE_DATA_PATH,
+             shuffle=False
              )

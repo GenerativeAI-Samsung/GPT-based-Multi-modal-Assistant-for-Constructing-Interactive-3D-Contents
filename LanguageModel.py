@@ -6,7 +6,41 @@ from transformers import AutoProcessor
 from transformers import TextStreamer
 from peft import PeftModel
 
+import asyncio
+import random
+import g4f
+
 from PIL import Image
+
+async def test_generate(prompt):
+    async def process_api_request(request, index):
+        while True:
+            try:
+                await asyncio.sleep(random.randint(10, 20))
+                print(f"Started API request of index: {index}.")
+                response = await g4f.ChatCompletion.create_async(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": request}],
+                )
+                if len(response) == 0:
+                    continue
+                print(f"Completed API request of index: {index}")
+                return response
+            except Exception as e:
+                print(f"Request of index {index} - Error: {str(e)}")
+                await asyncio.sleep(10)    
+    tasks = []
+    for index, request in enumerate(prompt):
+        tasks.append(process_api_request(request, index))
+    return await asyncio.gather(*tasks, return_exceptions=True)
+
+class TestUserInteractModel():
+    def __init__(self):
+        pass
+
+    def generate(self, batch):
+        respone = test_generate(batch)
+        return respone
 
 class VisionLangugeModel(nn.Module):
     def __init__(self):
@@ -515,3 +549,28 @@ Avoid using normal text; format your response strictly as specified above.
                 cropped_respone_batch.append("trajectory = []")
                 print("respone: trajectory = []")
         return cropped_respone_batch
+    
+    def step5_generate(self, batch, main_characters_and_creatures, layout_plan, list_of_object, object_initial_position):
+        # Prompt for input
+        processed_batch = self.step5_preprocess_data(batch, main_characters_and_creatures=main_characters_and_creatures, 
+                                                     layout_plan=layout_plan,
+                                                     list_of_object=list_of_object,
+                                                     object_initial_position=object_initial_position)
+
+        # Tokenize the input prompt
+        inputs = self.tokenizer(processed_batch, return_tensors="pt", padding=True)
+
+        # Move tensors to the appropriate device (e.g., GPU if available)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        # Generating
+        outputs = self.step5_layer.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+
+        # Decode the generated tokens back to text
+        respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
+        
+        # Crop output from response
+        respone = self.step5_crop_respone(respone)
+
+        return respone

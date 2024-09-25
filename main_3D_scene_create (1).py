@@ -883,75 +883,29 @@ if __name__ == '__main__':
     print(f"Best layout: {best_layout}")
 
     # Phase 3.2.4: Sinh ra kịch bản chuyển động, hành động và âm thanh của các đối tượng chính 
-    context = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to script the animation sequences for objects based on natural language descriptions, the list of objects and their initial positions
-please think step by step
-Natural language description: {input}
+    print("\n------------------------------------------------------")
+    print("Generate the motion script of the main objects.")
+    step5_respone = scene_plan_model.step5_generate(batch=[input_text], 
+                                                    base_environment=object_classified_list["base_environment"], 
+                                                    main_characters_and_creatures=object_classified_list["main_characters_and_creatures"],
+                                                    layout_plan=step3_respone[0])
+    print("Done!")
+    print("------------------------------------------------------")
 
-Objects initial position:
-{initial_position}
-
-After determining your answer, structure them in this format:
-trajectory = {{
-    "total_frames": total_frame,
-    "motions": [
-        {{"frame_start": frame_start, "frame_end": frame_end, "trajectory": [cordinate1, cordinate2, ...], "object": object}}, 
-        ...
-            ]
-}}
-where total_frames represents the total number of frames in the video, formatted as an integer, and motions is a list of motions that will occur in the video, where each element contains fields including start_frame, end_frame, and list the coordinates of the points through which the path will pass to later perform interpolation to create a trajectory.
-
-Avoid using normal text; format your response strictly as specified above.
-"""
-
-    output_phase_3_2_4 = """
-trajectory = {
-    "total_frames": 240,
-    "motions": [
-        {"frame_start": 1, "frame_end": 60, "trajectory": [(6, 1, 0), (7, 1, 0), (8, 1, 0)], "object": "little_girl"},
-        {"frame_start": 1, "frame_end": 60, "trajectory": [(6, -1, 0), (7, -1, 0), (8, -1, 0)], "object": "medium_dog"},
-        {"frame_start": 61, "frame_end": 120, "trajectory": [(8, 1, 0), (9, 2, 0), (10, 3, 0)], "object": "little_girl"},
-        {"frame_start": 61, "frame_end": 120, "trajectory": [(8, -1, 0), (9, -2, 0), (10, -3, 0)], "object": "medium_dog"},
-        {"frame_start": 121, "frame_end": 180, "trajectory": [(10, 3, 0), (11, 3, 0), (12, 3, 0)], "object": "little_girl"},
-        {"frame_start": 121, "frame_end": 180, "trajectory": [(10, -3, 0), (11, -3, 0), (12, -3, 0)], "object": "medium_dog"},
-        {"frame_start": 181, "frame_end": 240, "trajectory": [(12, 3, 0), (12, 2, 0), (12, 1, 0)], "object": "little_girl"},
-        {"frame_start": 181, "frame_end": 240, "trajectory": [(12, -3, 0), (12, -2, 0), (12, -1, 0)], "object": "medium_dog"}
-    ]
-}
-"""
-#     output_phase_3_2_4= """
-# trajectory = {
-# "total_frames": 240,
-# "motions": [
-# {"frame_start": 1, "frame_end": 60, "trajectory": [(6, 1, 0), (7, 1, 1), (8, 1, 2), (9, 1, 1), (10, 1, 0)], "object": "little_girl"},
-# {"frame_start": 1, "frame_end": 60, "trajectory": [(6, -1, 0), (7, -1, 1), (8, -1, 2), (9, -1, 1), (10, -1, 0)], "object": "medium_dog"},
-# {"frame_start": 61, "frame_end": 120, "trajectory": [(10, 1, 0), (11, 2, 0), (12, 3, 0), (13, 2, 0), (14, 1, 0)], "object": "little_girl"},
-# {"frame_start": 61, "frame_end": 120, "trajectory": [(10, -1, 0), (11, -2, 0), (12, -3, 0), (13, -2, 0), (14, -1, 0)], "object": "medium_dog"},
-# {"frame_start": 121, "frame_end": 180, "trajectory": [(14, 1, 0), (15, 2, 0), (16, 3, 0), (17, 2, 0), (18, 1, 0)], "object": "little_girl"},
-# {"frame_start": 121, "frame_end": 180, "trajectory": [(14, -1, 0), (15, -2, 0), (16, -3, 0), (17, -2, 0), (18, -1, 0)], "object": "medium_dog"},
-# {"frame_start": 181, "frame_end": 240, "trajectory": [(18, 1, 0), (19, 2, 0), (20, 3, 0), (21, 2, 0), (22, 1, 0)], "object": "little_girl"},
-# {"frame_start": 181, "frame_end": 240, "trajectory": [(18, -1, 0), (19, -2, 0), (20, -3, 0), (21, -2, 0), (22, -1, 0)], "object": "medium_dog"}
-# ]
-# }
-# """
-
-    exec(output_phase_3_2_4)
-
-    # Create movement to blender
-    num_frames = trajectory["total_frames"]
-    mov_list = []
-    for i, motion in enumerate(trajectory["motions"]):
-        func = f'mov{i} = Movement(frame_start={motion["frame_start"]}, frame_end={motion["frame_end"]}, trajectory={motion["trajectory"]}, object={assets[motion["object"]]})'
-        exec(func)
-        mov_list.append(f"mov{i}")
-
-    for frame in range(num_frames):
-        for mov in mov_list:
-            func = f"{mov}.move(current_frame={frame + 1})"
-            exec(func)
-
-    bpy.context.scene.frame_end = num_frames 
+    # Viết ra file .json và yêu cầu người dùng check lại
+    json_object = json.dumps(step5_respone, indent=4)
+    with open("step5_respone.json", "w") as outfile:
+        outfile.write(json_object)
+    print("You should check respone in step5_respone.json to make sure that response reliable and executable!")
+    control = None
+    while (control != 'continue'):
+        control = input('Press "continue" if done: ')
+    
+    # Đọc lại file .json để đến bước tiếp theo
+    with open('step5_respone.json', 'r') as openfile:
+        step5_respone = json.load(openfile)
+    print("------------------------------------------------------")
+    exec(step5_respone[0]) 
 
 # Because of the un-unified of object size and location, a little bit of change should make on:
 #   playground_swing: (x, y, z) scale -> 0.01; z location -> -0.69

@@ -309,39 +309,3 @@ def constraint_solving(assets, constraints, max_iterations=100000):
             # Revert to best layout if no improvement
             assets = best_layout
     return best_layout, best_score
-
-
-You are responsible for developing multiple Blender scripts to create animation scenes based on natural language descriptions. Your task is to script the animation sequences for the objects listed in main_characters_and_creatures, using the provided natural language descriptions, the scene layout plan, the list of objects, and their initial positions.    
-please think step by step
-
-main_characters_and_creatures list:
-{main_characters_and_creatures}
-
-Natural language description: {input}
-
-The layout plan:
-{layout_plan}
-
-the list of objects:
-{list_of_object}
-
-Objects initial position:
-{initial_position}
-
-After determining your answer, structure them in this format:
-trajectory = {{
-    "total_frames": total_frame,
-    "motions": [
-        {{"frame_start": frame_start, "frame_end": frame_end, "trajectory": [cordinate1, cordinate2, ...], "object": object, "object_action": action, "sound": sound}}, 
-        ...
-            ]
-}}
-total_frames represents the total duration of the video in frames, given as an integer. The motions field is a list of movements that occur in the video, where each motion is defined by the following elements:
-- frame_start: The frame at which the motion begins.
-- frame_end: The frame at which the motion ends.
-- trajectory: A list of coordinates that define the path the object will follow. These points will later be used for interpolation to create a smooth trajectory.
-- object: The name of the object being animated.
-- action: The specific action the object performs during this motion.
-- sound: The sound associated with the object during this motion, or None if no sound is involved.
-
-Avoid using normal text; format your response strictly as specified above.
