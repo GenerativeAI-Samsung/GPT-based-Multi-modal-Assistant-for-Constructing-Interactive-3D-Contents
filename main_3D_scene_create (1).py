@@ -1,4 +1,4 @@
-from LanguageModel import ScenePlanningModel
+from LanguageModel import ScenePlanningModel, TestScenePlanningModel
 from constrain_solving import constraint_solving
 
 from dataclasses import dataclass
@@ -770,9 +770,10 @@ if __name__ == '__main__':
     # Loading Model
     print("\n------------------------------------------------------")
     print("Loading Llama3 8B with adapter...")
-    MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
-    adapter_layers = []
-    scene_plan_model = ScenePlanningModel(MODEL_ID=MODEL_ID, adapter_layers=adapter_layers)
+    # MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
+    # adapter_layers = []
+    # scene_plan_model = ScenePlanningModel(MODEL_ID=MODEL_ID, adapter_layers=adapter_layers)
+    scene_plan_model = TestScenePlanningModel()
     print("Done!")
     print("------------------------------------------------------")
 

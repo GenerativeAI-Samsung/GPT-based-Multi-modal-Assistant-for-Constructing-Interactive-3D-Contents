@@ -1,5 +1,5 @@
 from RAG import RAG_module
-from LanguageModel import VisionLangugeModel, UserInteractModel
+from LanguageModel import VisionLangugeModel, UserInteractModel, TestUserInteractModel
 import json
 
 if __name__ == '__main__':
@@ -35,7 +35,8 @@ if __name__ == '__main__':
 # Khởi tạo Llama3-8B-Quantization
     print("------------------------------------------------------")
     print("Initialize Llama3-8B-Quantization...")
-    user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
+    # user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
+    user_interact_model = TestUserInteractModel()
     print("Done!")
     print("------------------------------------------------------")
 
