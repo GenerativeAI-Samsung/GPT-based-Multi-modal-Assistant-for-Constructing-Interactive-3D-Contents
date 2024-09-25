@@ -362,14 +362,10 @@ Avoid using normal text; format your response strictly as specified above.
         processed_batch = []
 
         step4_answer_format = """
-For each step, structure your output as:
-    layout_plan_i = {
-            "title": title_i,
-            "asset_list": [asset_name_1, asset_name_2],
-            "description": desc_i
-    }
-
-where title_i is the high-level name for this step, and desc is detailed visual text description of what it shall look like after layout. 
+initial_position_and_orientation = [{"name": obj1, "position": obj1_position, "orientation": obj1_orientation},
+                                    {"name": obj2, "position": obj2_position, "orientation": obj2_orientation},
+                                    ...]
+constraints = [(constraint1, {"param1": "object1", ...}), (constraint2, {"param2": "object2", ...}), ...]
     """
         
         for sample in batch:
@@ -391,8 +387,6 @@ symmetry_score(assets: List[Layout], axis: str): Mirroring objects along an axis
 parallelism_score(assets: List[Layout]): Objects parallel to each other, suggesting direction, e.g., parallel rows of seats in a theater.
 perpendicularity_score(object1: Layout, object2: Layout): Objects intersecting at a right angle, e.g., a bookshelf perpendicular to a desk.
 rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float, float]): a list of objects rotate a cirtain point, e.g., rotating chairs around a meeting table.
-repeat_object(original: Layout, direction: Tuple[float, float, float], repetitions: int, distance: float): Repeating patterns for rhythm or emphasis, e.g., a sequence of street lights.
-scale_group(objects: List[Layout], scale_factor: float): Adjusting object sizes for depth or focus, e.g., smaller background trees to create depth perception.
 
 Layout plan:
 {layout_plan}   
@@ -400,10 +394,7 @@ Layout plan:
 The answer should include 2 lists, initial_position_and_orientation and constraints, where initial_position_and_orientation is a list of dictionary with keys are object names, their initial positions and their initial orientation, and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
 
 After determining initial_position_and_orientation and constraints, structure them in this format:
-initial_position_and_orientation = [{{"name": obj1, "position": obj1_position, "orientation": obj1_orientation}},
-                                    {{"name": obj2, "position": obj2_position, "orientation": obj2_orientation}},
-                                    ...]
-constraints = [(constraint1, {{"param1": "object1", ...}}), (constraint2, {{"param2": "object2", ...}}), ...]
+{step4_answer_format}
 
 Avoid using normal text; format your response strictly as specified above.
 """    
@@ -454,3 +445,73 @@ Avoid using normal text; format your response strictly as specified above.
         respone = self.step4_crop_respone(respone)
 
         return respone
+    
+    def step5_preprocess_data(self, batch, main_characters_and_creatures, layout_plan, list_of_object, object_initial_position):
+        processed_batch = []
+
+        step5_answer_format = """
+trajectory = {
+    "total_frames": total_frame,
+    "motions": [
+        {"frame_start": frame_start, "frame_end": frame_end, "trajectory": [cordinate1, cordinate2, ...], "object": object, "object_action": action, "sound": sound}, 
+        ...
+            ]
+}
+Where total_frames represents the total duration of the video in frames, given as an integer. The motions field is a list of movements that occur in the video, where each motion is defined by the following elements:
+- frame_start: The frame at which the motion begins.
+- frame_end: The frame at which the motion ends.
+- trajectory: A list of coordinates that define the path the object will follow. These points will later be used for interpolation to create a smooth trajectory.
+- object: The name of the object being animated.
+- action: The specific action the object performs during this motion.
+- sound: The sound associated with the object during this motion, or None if no sound is involved.
+"""
+        
+        for sample in batch:
+            processed_sample = f"""
+You are responsible for developing multiple Blender scripts to create animation scenes based on natural language descriptions. Your task is to script the animation sequences for the objects listed in main_characters_and_creatures, using the provided natural language descriptions, the scene layout plan, the list of objects, and their initial positions.    
+please think step by step
+
+main_characters_and_creatures list:
+{main_characters_and_creatures}
+
+Natural language description: {sample}
+
+Scene layout plan:
+{layout_plan}
+
+List of objects:
+{list_of_object}
+
+Objects initial position:
+{object_initial_position}
+
+After determining your answer, structure them in this format:
+{step5_answer_format}
+
+Avoid using normal text; format your response strictly as specified above.
+"""    
+            processed_sample += f"""
+    -------------------------------------------------------------------------
+    REMEMBER TO ADVOID USING NORMAL AND STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+    {step5_answer_format}
+    ------------------------------------------------------------------------
+    """
+            processed_sample += "\nRespone:"
+            processed_batch.append(processed_sample)
+        
+        return processed_batch
+    
+    def step5_crop_respone(self, batch):
+        cropped_respone_batch = []
+        for respone in batch:
+            temp1 = respone.split('\nRespone:', 1)[1]
+            if ('trajectory' in temp1):
+                temp2 = temp1.split('trajectory', 1)[1]
+                temp3 = temp2.rsplit('}', 1)[0]
+                temp = 'trajectory' + temp3 + '}'
+                print(f"respone: {temp}")
+                cropped_respone_batch.append(temp)
+            else:
+                cropped_respone_batch.append("trajectory = []")
+                print("respone: trajectory = []")
+        return cropped_respone_batch

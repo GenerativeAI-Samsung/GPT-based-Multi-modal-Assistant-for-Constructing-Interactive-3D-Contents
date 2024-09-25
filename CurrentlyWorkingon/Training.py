@@ -187,7 +187,7 @@ async def generate_rewarding_score(rewarding_prompt):
         tasks.append(process_api_request(request, index))
     return await asyncio.gather(*tasks, return_exceptions=True)
 
-def model_generate(model, tokenizer, processed_batch, max_sequence_length=1536):
+def model_generate(model, tokenizer, processed_batch, max_sequence_length=500):
     # Tokenize the input prompt
     inputs = tokenizer(processed_batch['processed_batch'], return_tensors="pt", padding=True)
 
@@ -422,7 +422,7 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
             # Backward
             if not torch.isnan(total_loss).any():
                 total_loss.backward()
-                history.append(rewarding_score - 0.5)                
+                history.append(rewarding_score - 0.2)                
             # Print out value reference by outputs variable
             print("------------------caculate_loss_and_do_gradient_accumulation------------------")
             # print(f"model_inputs: {model_inputs}")

@@ -1,4 +1,5 @@
 from LanguageModel import ScenePlanningModel
+from constrain_solving import constraint_solving
 
 from dataclasses import dataclass
 from typing import Tuple, List, Dict, Set
@@ -878,8 +879,8 @@ if __name__ == '__main__':
     best_layout, best_score = constraint_solving(assets=initial_position,
                                                  constraints=constraint)
     
-    
-
+    print(f"\nBest score: {best_score}")
+    print(f"Best layout: {best_layout}")
 
     # Phase 3.2.4: Sinh ra kịch bản chuyển động, hành động và âm thanh của các đối tượng chính 
     context = f"""
