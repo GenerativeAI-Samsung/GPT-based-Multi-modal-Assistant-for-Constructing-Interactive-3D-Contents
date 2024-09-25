@@ -1,4 +1,8 @@
 if __name__ == '__main__':
+  
+  # Open previous answer
+  
+
     # step 1: -> Base on the demand, Language Model decide which step should be change to response.
     prompt = """
 Your task is to determine which steps in the following 3D scene construction process need to be adjusted to meet the user's requirements:
@@ -51,7 +55,7 @@ Step 4: Generate the initial location coordinates of the objects and the constra
   "little_girl": (6, 1, 0),
   "medium_dog": (6, -1, 0)
 }
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
 constraints = [
   ("proximity_score", {"object1": "playground_slide", "object2": "playground_swing"}),
   ("proximity_score", {"object1": "little_girl", "object2": "medium_dog"}),
