@@ -187,7 +187,7 @@ async def generate_rewarding_score(rewarding_prompt):
         tasks.append(process_api_request(request, index))
     return await asyncio.gather(*tasks, return_exceptions=True)
 
-def model_generate(model, tokenizer, processed_batch, max_sequence_length=1024):
+def model_generate(model, tokenizer, processed_batch, max_sequence_length=1536):
     # Tokenize the input prompt
     inputs = tokenizer(processed_batch['processed_batch'], return_tensors="pt", padding=True)
 
