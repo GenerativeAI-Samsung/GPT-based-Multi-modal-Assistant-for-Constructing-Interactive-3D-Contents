@@ -267,8 +267,8 @@ Avoid using normal text; format your response strictly as specified above.
         processed_batch = []
 
         step4_answer_format = """
-initial_position_and_orientation = [{"name": obj1, "position": obj1_position, "orientation": obj1_orientation},
-                                    {"name": obj2, "position": obj2_position, "orientation": obj2_orientation},
+initial_position_and_orientation = [{"name": obj1, "position": (x1, y1, z1), "orientation": (roll1, pitch1, yaw1)},
+                                    {"name": obj2, "position": (x2, y2, z2), "orientation": (roll2, pitch2, yaw2)},
                                     ...]
 constraints = [(constraint1, {"param1": "object1", ...}), (constraint2, {"param2": "object2", ...}), ...]
     """
@@ -296,7 +296,7 @@ rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float, flo
 Layout plan:
 {layout_plan}   
 
-The answer should include 2 lists, initial_position_and_orientation and constraints, where initial_position_and_orientation is a list of dictionary with keys are object names, their initial positions and their initial orientation, and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
+The answer should include 2 lists, initial_position_and_orientation and constraints, where initial_position_and_orientation is a list of dictionary with keys are object names, their initial positions (Euclidean coordinates) and their initial orientation (Euler angles), and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
 
 After determining initial_position_and_orientation and constraints, structure them in this format:
 {step4_answer_format}
@@ -311,6 +311,7 @@ Avoid using normal text; format your response strictly as specified above.
     """
             processed_sample += "\nRespone:"
             processed_batch.append(processed_sample)
+        
         return processed_batch
 
     def step4_crop_respone(self, batch):
@@ -345,14 +346,23 @@ Avoid using normal text; format your response strictly as specified above.
 trajectory = {
     "total_frames": total_frame,
     "motions": [
-        {"frame_start": frame_start, "frame_end": frame_end, "trajectory": [cordinate1, cordinate2, ...], "object": object, "object_action": action, "sound": sound}, 
+        {
+            "frame_start": frame_start,
+            "frame_end": frame_end,
+            "position_trajectory": [(x1, y1, z1), (x2, y2, z2), ...],  
+            "orientation_trajectory": [(roll1, pitch1, yaw1), (roll2, pitch2, yaw2), ...],               
+            "object": object,
+            "object_action": action,
+            "sound": sound
+        },
         ...
-            ]
+    ]
 }
 Where total_frames represents the total duration of the video in frames, given as an integer. The motions field is a list of movements that occur in the video, where each motion is defined by the following elements:
 - frame_start: The frame at which the motion begins.
 - frame_end: The frame at which the motion ends.
-- trajectory: A list of coordinates that define the path the object will follow. These points will later be used for interpolation to create a smooth trajectory.
+- position_trajectory: A list of tuples representing Euclidean coordinates (x, y, z) that define the path the object will follow in 3D space. These points will later be used for interpolation to create a smooth trajectory.
+- orientaion_trajectory: A list of tuples representing the object's orientation in Euclidean space, typically described by Euler angles (roll, pitch, yaw) for rotation, allowing smooth transitions and realistic rotation behavior.
 - object: The name of the object being animated.
 - action: The specific action the object performs during this motion.
 - sound: The sound associated with the object during this motion, or None if no sound is involved.
@@ -417,6 +427,94 @@ Avoid using normal text; format your response strictly as specified above.
 
         # Crop output from response
         respone = self.step5_crop_respone(respone)
+        return respone
+    
+    def modify_preprocess_data(self, 
+                              batch,
+                              step1_respone, 
+                              step2_respone, 
+                              step3_respone,
+                              step4_respone,
+                              step5_respone):
+        processed_batch = []
+
+        modify_answer_format = """
+change_step = [step1, step2, ...]
+"""
+        
+        for sample in batch:
+            processed_sample = f"""
+Your task is to determine which steps in the following 3D scene construction process need to be adjusted to meet the user's requirements:
+
+Step 1: Identify the objects that will appear in the 3D scene.
+{step1_respone}
+
+Step 2: Classify the types of the identified objects.
+{step2_respone}
+
+Step 3: Generate a general description of the layout.
+{step3_respone}
+
+Step 4: Generate the initial location coordinates of the objects and the constraints between them.
+{step4_respone}
+
+Step 5: Generate the motion script of the main objects.
+{step5_respone}
+
+User's requirements: {sample}
+
+After determining your answer, structure them in this format:
+{modify_answer_format}
+
+Avoid using normal text; format your response strictly as specified above
+"""    
+            processed_sample += f"""
+    -------------------------------------------------------------------------
+    REMEMBER TO ADVOID USING NORMAL AND STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+    {modify_answer_format}
+    ------------------------------------------------------------------------
+    """
+            processed_sample += "\nRespone:"
+            processed_batch.append(processed_sample)
+        
+        return processed_batch
+
+    def modify_crop_respone(self, batch):
+        cropped_respone_batch = []
+        for respone in batch:
+            temp1 = respone.split('\nRespone:', 1)[1]
+            if ('change_step' in temp1):
+                temp2 = temp1.split('change_step', 1)[1]
+                temp3 = temp2.rsplit(']', 1)[0]
+                temp = 'change_step' + temp3 + ']'
+                print(f"respone: {temp}")
+                cropped_respone_batch.append(temp)
+            else:
+                cropped_respone_batch.append("change_step = []")
+                print("respone: change_step = []")
+        return cropped_respone_batch
+
+
+    def modified_user_request(self, 
+                              batch, 
+                              step1_respone, 
+                              step2_respone, 
+                              step3_respone,
+                              step4_respone,
+                              step5_respone):
+        # Prompt for input
+        processed_batch = self.modify_preprocess_data(batch=batch, 
+                                                      step1_respone=step1_respone, 
+                                                     step2_respone=step2_respone,
+                                                     step3_respone=step3_respone,
+                                                     step4_respone=step4_respone,
+                                                     step5_respone=step5_respone)
+
+        respone = self.test_generate(processed_batch)
+
+        # Crop output from response
+        respone = self.modify_crop_respone(respone)
+        
         return respone
 
 
@@ -589,9 +687,12 @@ Avoid using normal text; format your response strictly as specified above.
                 print(f"respone: object_list = []")
         return cropped_respone_batch
 
-    def step1_generate(self, batch):
+    def step1_generate(self, batch, mode):
         # Prompt for input
-        processed_batch = self.step1_preprocess_data(batch)
+        if (mode == "new"):
+            processed_batch = self.step1_preprocess_data(batch)
+        elif (mode == "modify"):
+            pass
 
         # Tokenize the input prompt
         inputs = self.tokenizer(processed_batch, return_tensors="pt", padding=True)
@@ -668,9 +769,12 @@ Avoid using normal text; format your response strictly as specified above.
                 print(f"respone: object_classified_list = []")
         return cropped_respone_batch
 
-    def step2_generate(self, batch, objects_list):
+    def step2_generate(self, batch, objects_list, mode):
         # Prompt for input
-        processed_batch = self.step2_preprocess_data(batch, objects_list)
+        if (mode == "new"):
+            processed_batch = self.step2_preprocess_data(batch, objects_list)
+        elif (mode == "modify"):
+            pass
 
         # Tokenize the input prompt
         inputs = self.tokenizer(processed_batch, return_tensors="pt", padding=True)
@@ -748,9 +852,12 @@ Avoid using normal text; format your response strictly as specified above.
                 print("respone: layout_plan_1 = {}")
         return cropped_respone_batch
 
-    def step3_generate(self, batch, objects_list, object_classified_list):
+    def step3_generate(self, batch, objects_list, object_classified_list, mode):
         # Prompt for input
-        processed_batch = self.step3_preprocess_data(batch, objects_list, object_classified_list)
+        if (mode == "new"):
+            processed_batch = self.step3_preprocess_data(batch, objects_list, object_classified_list)
+        elif (mode == "modify"):
+            pass
 
         # Tokenize the input prompt
         inputs = self.tokenizer(processed_batch, return_tensors="pt", padding=True)
@@ -774,8 +881,8 @@ Avoid using normal text; format your response strictly as specified above.
         processed_batch = []
 
         step4_answer_format = """
-initial_position_and_orientation = [{"name": obj1, "position": obj1_position, "orientation": obj1_orientation},
-                                    {"name": obj2, "position": obj2_position, "orientation": obj2_orientation},
+initial_position_and_orientation = [{"name": obj1, "position": (x1, y1, z1), "orientation": (roll1, pitch1, yaw1)},
+                                    {"name": obj2, "position": (x2, y2, z2), "orientation": (roll2, pitch2, yaw2)},
                                     ...]
 constraints = [(constraint1, {"param1": "object1", ...}), (constraint2, {"param2": "object2", ...}), ...]
     """
@@ -803,7 +910,7 @@ rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float, flo
 Layout plan:
 {layout_plan}   
 
-The answer should include 2 lists, initial_position_and_orientation and constraints, where initial_position_and_orientation is a list of dictionary with keys are object names, their initial positions and their initial orientation, and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
+The answer should include 2 lists, initial_position_and_orientation and constraints, where initial_position_and_orientation is a list of dictionary with keys are object names, their initial positions (Euclidean coordinates) and their initial orientation (Euler angles), and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
 
 After determining initial_position_and_orientation and constraints, structure them in this format:
 {step4_answer_format}
@@ -836,10 +943,12 @@ Avoid using normal text; format your response strictly as specified above.
                 print("respone: initial_position = {}\nconstraints = []")
         return cropped_respone_batch
 
-    def step4_generate(self, batch, base_environment, main_characters_and_creatures, layout_plan):
+    def step4_generate(self, batch, base_environment, main_characters_and_creatures, layout_plan, mode):
         # Prompt for input
-        processed_batch = self.step4_preprocess_data(batch, base_environment, main_characters_and_creatures, layout_plan)
-
+        if (mode == "new"):
+            processed_batch = self.step4_preprocess_data(batch, base_environment, main_characters_and_creatures, layout_plan)
+        elif (mode == "modify"):
+            pass
         # Tokenize the input prompt
         inputs = self.tokenizer(processed_batch, return_tensors="pt", padding=True)
 
@@ -865,14 +974,23 @@ Avoid using normal text; format your response strictly as specified above.
 trajectory = {
     "total_frames": total_frame,
     "motions": [
-        {"frame_start": frame_start, "frame_end": frame_end, "trajectory": [cordinate1, cordinate2, ...], "object": object, "object_action": action, "sound": sound}, 
+        {
+            "frame_start": frame_start,
+            "frame_end": frame_end,
+            "position_trajectory": [(x1, y1, z1), (x2, y2, z2), ...],  
+            "orientation_trajectory": [(roll1, pitch1, yaw1), (roll2, pitch2, yaw2), ...],               
+            "object": object,
+            "object_action": action,
+            "sound": sound
+        },
         ...
-            ]
+    ]
 }
 Where total_frames represents the total duration of the video in frames, given as an integer. The motions field is a list of movements that occur in the video, where each motion is defined by the following elements:
 - frame_start: The frame at which the motion begins.
 - frame_end: The frame at which the motion ends.
-- trajectory: A list of coordinates that define the path the object will follow. These points will later be used for interpolation to create a smooth trajectory.
+- position_trajectory: A list of tuples representing Euclidean coordinates (x, y, z) that define the path the object will follow in 3D space. These points will later be used for interpolation to create a smooth trajectory.
+- orientaion_trajectory: A list of tuples representing the object's orientation in Euclidean space, typically described by Euler angles (roll, pitch, yaw) for rotation, allowing smooth transitions and realistic rotation behavior.
 - object: The name of the object being animated.
 - action: The specific action the object performs during this motion.
 - sound: The sound associated with the object during this motion, or None if no sound is involved.
@@ -928,13 +1046,15 @@ Avoid using normal text; format your response strictly as specified above.
                 print("respone: trajectory = []")
         return cropped_respone_batch
     
-    def step5_generate(self, batch, main_characters_and_creatures, layout_plan, list_of_object, object_initial_position):
+    def step5_generate(self, batch, main_characters_and_creatures, layout_plan, list_of_object, object_initial_position, mode):
         # Prompt for input
-        processed_batch = self.step5_preprocess_data(batch, main_characters_and_creatures=main_characters_and_creatures, 
+        if (mode == "new"):
+            processed_batch = self.step5_preprocess_data(batch, main_characters_and_creatures=main_characters_and_creatures, 
                                                      layout_plan=layout_plan,
                                                      list_of_object=list_of_object,
                                                      object_initial_position=object_initial_position)
-
+        elif (mode == "modify"):
+            pass
         # Tokenize the input prompt
         inputs = self.tokenizer(processed_batch, return_tensors="pt", padding=True)
 
@@ -952,3 +1072,102 @@ Avoid using normal text; format your response strictly as specified above.
         respone = self.step5_crop_respone(respone)
 
         return respone
+    
+    def modify_preprocess_data(self, 
+                              batch,
+                              step1_respone, 
+                              step2_respone, 
+                              step3_respone,
+                              step4_respone,
+                              step5_respone):
+        processed_batch = []
+
+        modify_answer_format = """
+change_step = [step1, step2, ...]
+"""
+        
+        for sample in batch:
+            processed_sample = f"""
+Your task is to determine which steps in the following 3D scene construction process need to be adjusted to meet the user's requirements:
+
+Step 1: Identify the objects that will appear in the 3D scene.
+{step1_respone}
+
+Step 2: Classify the types of the identified objects.
+{step2_respone}
+
+Step 3: Generate a general description of the layout.
+{step3_respone}
+
+Step 4: Generate the initial location coordinates of the objects and the constraints between them.
+{step4_respone}
+
+Step 5: Generate the motion script of the main objects.
+{step5_respone}
+
+User's requirements: {sample}
+
+After determining your answer, structure them in this format:
+{modify_answer_format}
+
+Avoid using normal text; format your response strictly as specified above
+"""    
+            processed_sample += f"""
+    -------------------------------------------------------------------------
+    REMEMBER TO ADVOID USING NORMAL AND STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+    {modify_answer_format}
+    ------------------------------------------------------------------------
+    """
+            processed_sample += "\nRespone:"
+            processed_batch.append(processed_sample)
+        
+        return processed_batch
+
+    def modify_crop_respone(self, batch):
+        cropped_respone_batch = []
+        for respone in batch:
+            temp1 = respone.split('\nRespone:', 1)[1]
+            if ('change_step' in temp1):
+                temp2 = temp1.split('change_step', 1)[1]
+                temp3 = temp2.rsplit(']', 1)[0]
+                temp = 'change_step' + temp3 + ']'
+                print(f"respone: {temp}")
+                cropped_respone_batch.append(temp)
+            else:
+                cropped_respone_batch.append("change_step = []")
+                print("respone: change_step = []")
+        return cropped_respone_batch
+
+
+    def modified_user_request(self, 
+                              batch, 
+                              step1_respone, 
+                              step2_respone, 
+                              step3_respone,
+                              step4_respone,
+                              step5_respone):
+        # Prompt for input
+        processed_batch = self.modify_preprocess_data(batch=batch, 
+                                                      step1_respone=step1_respone, 
+                                                     step2_respone=step2_respone,
+                                                     step3_respone=step3_respone,
+                                                     step4_respone=step4_respone,
+                                                     step5_respone=step5_respone)
+
+        # Tokenize the input prompt
+        inputs = self.tokenizer(processed_batch, return_tensors="pt", padding=True)
+
+        # Move tensors to the appropriate device (e.g., GPU if available)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        # Generating
+        outputs = self.base_model.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+
+        # Decode the generated tokens back to text
+        respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
+        
+        # Crop output from response
+        respone = self.modify_crop_respone(respone)
+        
+        return respone        

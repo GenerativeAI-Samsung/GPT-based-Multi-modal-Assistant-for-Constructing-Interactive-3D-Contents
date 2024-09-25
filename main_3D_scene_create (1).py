@@ -780,7 +780,7 @@ if __name__ == '__main__':
     # Phase 1: Xác định các vật thể có xuất hiện trong video
     print("\n------------------------------------------------------")
     print("Identify the objects that will appear in the 3D scene.")
-    step1_respone = scene_plan_model.step1_generate(batch=[input_text])
+    step1_respone = scene_plan_model.step1_generate(batch=[input_text], mode="new")
     print("Done!")
     print("------------------------------------------------------")
 
@@ -807,7 +807,7 @@ if __name__ == '__main__':
 
     print("\n------------------------------------------------------")
     print("Classify the types of the identified objects.")
-    step2_respone = scene_plan_model.step2_generate(batch=[input_text], objects_list=step1_respone[0])
+    step2_respone = scene_plan_model.step2_generate(batch=[input_text], objects_list=step1_respone[0], mode="new")
     print("Done!")
     print("------------------------------------------------------")
 
@@ -832,7 +832,8 @@ if __name__ == '__main__':
     print("Generate a general description of the layout.")
     step3_respone = scene_plan_model.step3_generate(batch=[input_text], 
                                                     objects_list=step1_respone[0], 
-                                                    object_classified_list=step2_respone[0])
+                                                    object_classified_list=step2_respone[0],
+                                                    mode="new")
     print("Done!")
     print("------------------------------------------------------")
 
@@ -857,7 +858,8 @@ if __name__ == '__main__':
     step4_respone = scene_plan_model.step4_generate(batch=[input_text], 
                                                     base_environment=object_classified_list["base_environment"], 
                                                     main_characters_and_creatures=object_classified_list["main_characters_and_creatures"],
-                                                    layout_plan=step3_respone[0])
+                                                    layout_plan=step3_respone[0],
+                                                    mode="new")
     print("Done!")
     print("------------------------------------------------------")
 
@@ -889,7 +891,8 @@ if __name__ == '__main__':
     step5_respone = scene_plan_model.step5_generate(batch=[input_text], 
                                                     base_environment=object_classified_list["base_environment"], 
                                                     main_characters_and_creatures=object_classified_list["main_characters_and_creatures"],
-                                                    layout_plan=step3_respone[0])
+                                                    layout_plan=step3_respone[0],
+                                                    mode="new")
     print("Done!")
     print("------------------------------------------------------")
 

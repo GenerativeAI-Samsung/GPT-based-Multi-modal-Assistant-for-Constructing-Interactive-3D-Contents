@@ -1,101 +1,81 @@
+import json
+from LanguageModel import ScenePlanningModel, TestScenePlanningModel
+
 if __name__ == '__main__':
   
   # Open previous answer
+  with open('step1_respone.json', 'r') as openfile:
+    step1_respone = json.load(openfile)
+
+  with open('step2_respone.json', 'r') as openfile:
+    step2_respone = json.load(openfile)
+
+  with open('step3_respone.json', 'r') as openfile:
+    step3_respone = json.load(openfile)
+
+  with open('step4_respone.json', 'r') as openfile:
+    step4_respone = json.load(openfile)
+
+  with open('step5_respone.json', 'r') as openfile:
+    step5_respone = json.load(openfile)
   
+  # Loading Model
+  print("\n------------------------------------------------------")
+  print("Loading Llama3 8B with adapter...")
+  # MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
+  # adapter_layers = []
+  # scene_plan_model = ScenePlanningModel(MODEL_ID=MODEL_ID, adapter_layers=adapter_layers)
+  scene_plan_model = TestScenePlanningModel()
+  print("Done!")
+  print("------------------------------------------------------")
 
-    # step 1: -> Base on the demand, Language Model decide which step should be change to response.
-    prompt = """
-Your task is to determine which steps in the following 3D scene construction process need to be adjusted to meet the user's requirements:
+  no_sastisfy = True
+  while no_sastisfy:
+    modify_command = input("Input your modified: ")
 
-Step 1: Identify the objects that will appear in the 3D scene.
--> object_list = [
-  {"name": "garden_grassy_field", "description": "A large, lush, green grassy field serving as the base of the garden."},
-  {"name": "playground_slide", "description": "A brightly colored children's slide made of plastic, with a smooth surface and gentle slope."},
-  {"name": "playground_swing", "description": "A single swing with a wooden seat and metal chains, positioned in the garden area."},
-  {"name": "little_girl", "description": "A young girl, around 7-10 years old, wearing a bright yellow sweater, a colorful dress, and high heels. She has an energetic and playful appearance."},
-  {"name": "medium_dog", "description": "A medium-sized dog with a friendly demeanor, either standing or playfully interacting with the girl."}
-]
+    respone = scene_plan_model.modified_user_request(batch=[modify_command],
+                                            step1_respone=step1_respone,
+                                            step2_respone=step2_respone,
+                                            step3_respone=step3_respone,
+                                            step4_respone=step4_respone,
+                                            step5_respone=step5_respone)
 
-Step 2: Classify the types of the identified objects.
--> env_objs = [
-  "garden_grassy_field",
-  "playground_slide",
-  "playground_swing"
-]
 
-main_objs = [
-  "little_girl",
-  "medium_dog"
-]
-
-Step 3: Generate a general description of the layout.
--> layout_plan_1 = {
-  "title": "Set Up Garden Base",
-  "asset_list": ["garden_grassy_field"],
-  "description": "Place the large, lush, green grassy field as the base of the garden. Ensure it covers the entire scene to provide a natural, grassy environment."
-}
-
-layout_plan_2 = {
-  "title": "Add Playground Equipment",
-  "asset_list": ["playground_slide", "playground_swing"],
-  "description": "Position the brightly colored children's slide and the single swing within the garden area. Place the slide to one side, with the swing slightly in the background, creating a playful and engaging playground atmosphere."
-}
-
-layout_plan_3 = {
-  "title": "Place Main Characters",
-  "asset_list": ["little_girl", "medium_dog"],
-  "description": "Place the young girl, dressed in a bright yellow sweater, colorful dress, and high heels, interacting with the medium-sized dog. Position the girl near the playground equipment, playing with the dog to show a dynamic and joyful interaction."
-}
-
-Step 4: Generate the initial location coordinates of the objects and the constraints between them.
--> initial_position = {
-  "garden_grassy_field": (0, 0, 0),
-  "playground_slide": (5, 0, 0),
-  "playground_swing": (8, 0, 0),
-  "little_girl": (6, 1, 0),
-  "medium_dog": (6, -1, 0)
-}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
-constraints = [
-  ("proximity_score", {"object1": "playground_slide", "object2": "playground_swing"}),
-  ("proximity_score", {"object1": "little_girl", "object2": "medium_dog"}),
-  ("direction_score", {"object1": "little_girl", "object2": "medium_dog"}),
-  ("alignment_score", {"assets": ["playground_slide", "playground_swing"], "axis": "x"}),
-  ("perpendicularity_score", {"object1": "playground_slide", "object2": "playground_swing"}),
-  ("parallelism_score", {"assets": ["playground_slide", "playground_swing"]}),
-  ("rotation_uniformity_score", {"objects": ["playground_slide", "playground_swing"], "center": (0, 0, 0)})
-]
-
-Step 5: Generate the motion script of the main objects.
--> trajectory = {
-    "total_frames": 240,
-    "motions": [
-        {"frame_start": 1, "frame_end": 60, "trajectory": [(6, 1, 0), (7, 1, 0), (8, 1, 0)], "object": "little_girl"},
-        {"frame_start": 1, "frame_end": 60, "trajectory": [(6, -1, 0), (7, -1, 0), (8, -1, 0)], "object": "medium_dog"},
-        {"frame_start": 61, "frame_end": 120, "trajectory": [(8, 1, 0), (9, 2, 0), (10, 3, 0)], "object": "little_girl"},
-        {"frame_start": 61, "frame_end": 120, "trajectory": [(8, -1, 0), (9, -2, 0), (10, -3, 0)], "object": "medium_dog"},
-        {"frame_start": 121, "frame_end": 180, "trajectory": [(10, 3, 0), (11, 3, 0), (12, 3, 0)], "object": "little_girl"},
-        {"frame_start": 121, "frame_end": 180, "trajectory": [(10, -3, 0), (11, -3, 0), (12, -3, 0)], "object": "medium_dog"},
-        {"frame_start": 181, "frame_end": 240, "trajectory": [(12, 3, 0), (12, 2, 0), (12, 1, 0)], "object": "little_girl"},
-        {"frame_start": 181, "frame_end": 240, "trajectory": [(12, -3, 0), (12, -2, 0), (12, -1, 0)], "object": "medium_dog"}
-    ]
-}
-
-User's requirements: I want the girl and her dog running around the playground_swing
-
-After determining your answer, structure them in this format:
-change_step = [step1, step2, ...]
-
-Avoid using normal text; format your response strictly as specified above
-"""
-
-    respone = """
-change_step = [5]
-"""
-
-    exec(respone)
+    # Viết ra file .json và yêu cầu người dùng check lại
+    json_object = json.dumps(respone, indent=4)
+    with open("modify_step.json", "w") as outfile:
+        outfile.write(json_object)
+    print("You should check respone in modify_step.json to make sure that response reliable and executable!")
+    control = None
+    while (control != 'continue'):
+        control = input('Press "continue" if done: ')
     
-    prompt = """
+    # Đọc lại file .json để đến bước tiếp theo
+    with open('modify_step.json', 'r') as openfile:
+        respone = json.load(openfile)
+    print("------------------------------------------------------")
+
+    exec(respone[0])
+
+    modify_step = min(change_step)
+
+    if (modify_step == 1):
+      pass
+    if (modify_step == 2):
+      pass
+    if (modify_step == 3):
+      pass
+    if (modify_step == 4):
+      pass
+    if(modify_step == 5):
+      pass
+
+    control = input("Is that oke? ('yes' if yes, else 'no'): ")
+    if (control == 'yes'):
+      no_sastisfy = False
+
+
+  prompt = """
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
 Your mission is to script the animation sequences for objects based on natural language descriptions, the list of objects and their initial positions
 
