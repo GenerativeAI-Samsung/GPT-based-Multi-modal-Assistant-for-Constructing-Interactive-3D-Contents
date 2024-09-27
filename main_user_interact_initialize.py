@@ -115,7 +115,7 @@ Question: {question}
     print("\n------------------------------------------------------")
     # Viết ra file .json và yêu cầu người dùng check lại
     json_object = json.dumps(answers, indent=4)
-    with open("question_asked.json", "w") as outfile:
+    with open("answers.json", "w") as outfile:
         outfile.write(json_object)
     print("You should check respone in answers.json to make sure that response reliable and executable!")
     control = None
@@ -128,12 +128,14 @@ Question: {question}
     print("------------------------------------------------------")
 
     # Cập nhập câu trả lời vào external_images
-    for image in external_images:
-        image["questions_response"] = [item["respone"] for item in answers]
+    for i, image in enumerate(external_images):
+        image["questions_response"] = [item["respone"] for item in answers[i]]
 
     # Các câu hỏi và câu trả lời của mô hình ngôn ngữ sẽ được đưa vào list các documents_augement để về sau mô hình ngôn ngữ truy vấn
     for image in external_images:
-        documents_augement.extend(f"question: {question}, respone: {respone}"  for respone, question in zip(image["questions_response"], image["image_questions"]))
+        documents_augement.extend(respone  for respone in image["questions_response"])
+
+    print(documents_augement)
 
     # Khởi tạo RAG module
     print("\n------------------------------------------------------")
@@ -144,21 +146,26 @@ Question: {question}
     print("------------------------------------------------------")
 
     print("Start User Interact Interface...")
+    
+    respone = ""
     while (input_text != 'done'):
         # Thực hiện việc truy xuất thông tin từ RAG module (Top 20)
-        output_RAG = RAG_module.find_top_k_embedding(query=input_text, k=20)
+        output_RAG = Retrieval_module.find_top_k_embedding(query=input_text, k=20)
         combine_item = ''.join((item + "\n") for item in output_RAG)
         # Sau đó, prompt để mô hình ngôn ngữ trả lời dựa trên thông tin được lựa từ output_RAG
+        
+
         prompt = f"""
-You are a friendly assistant. Your task is to interact with the user to create a script that meets the user's requirements.
+Your task is to create a 3D scene base on the user's requirements.
+
+Your previous answer: {respone}
 
 User input: {input_text} 
 
 Additionally, there is some supplementary information that will help you respond more accurately to the user's needs:
 {combine_item}
-
-Your answer should contain natural language only
 """
+        print(f"prompt: {prompt}")
         print("responing...")
         respone = user_interact_model.generate(batch=[prompt])
         print(f"Model respone:\n{respone[0]}")

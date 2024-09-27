@@ -28,11 +28,15 @@ class RAG_module():
         query_embedding = self.model.encode(query, convert_to_tensor=True)
         scores = []
         for chunk in self.embedding_dicts:
+            print(chunk)
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             score = self.cos(torch.tensor(chunk["embedding"]).unsqueeze(0).to(device), query_embedding.unsqueeze(0).to(device))
             scores.append(score)
+        
+        if (len(score) < k):
+            k = len(score) - 1
 
         top_k_indices = torch.topk(input=torch.tensor(scores), k=k).indices.tolist()
-        top_k_chunks = [self.embedding_dicts[i.item()]["sentence"] for i in top_k_indices]
+        top_k_chunks = [self.embedding_dicts[i]["sentence"] for i in top_k_indices]
         return top_k_chunks
 
