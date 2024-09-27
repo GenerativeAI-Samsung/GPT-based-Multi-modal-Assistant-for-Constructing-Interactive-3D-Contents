@@ -12,6 +12,28 @@ import g4f
 
 from PIL import Image
 
+async def test_generate(prompt):
+    async def process_api_request(request, index):
+        while True:
+            try:
+                await asyncio.sleep(random.randint(10, 20))
+                print(f"Started API request of index: {index}.")
+                response = await g4f.ChatCompletion.create_async(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": request}],
+                )
+                if len(response) == 0:
+                    continue
+                print(f"Completed API request of index: {index}")
+                return response
+            except Exception as e:
+                print(f"Request of index {index} - Error: {str(e)}")
+                await asyncio.sleep(10)    
+    tasks = []
+    for index, request in enumerate(prompt):
+        tasks.append(process_api_request(request, index))
+    return await asyncio.gather(*tasks, return_exceptions=True)
+
 class TestUserInteractModel():
     def __init__(self):
         pass
@@ -45,28 +67,6 @@ class TestUserInteractModel():
 class TestScenePlanningModel():
     def __init__(self):
         pass
-
-    async def test_generate(self, prompt):
-        async def process_api_request(request, index):
-            while True:
-                try:
-                    await asyncio.sleep(random.randint(10, 20))
-                    print(f"Started API request of index: {index}.")
-                    response = await g4f.ChatCompletion.create_async(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "user", "content": request}],
-                    )
-                    if len(response) == 0:
-                        continue
-                    print(f"Completed API request of index: {index}")
-                    return response
-                except Exception as e:
-                    print(f"Request of index {index} - Error: {str(e)}")
-                    await asyncio.sleep(10)    
-        tasks = []
-        for index, request in enumerate(prompt):
-            tasks.append(process_api_request(request, index))
-        return await asyncio.gather(*tasks, return_exceptions=True)
     
     def step1_preprocess_data(self, batch):
         processed_batch = []
@@ -169,7 +169,7 @@ Avoid using normal text; format your response strictly as specified above.
         elif (mode == "modify"):
             processed_batch = self.step1_preprocess_data_version_modify(batch=batch, feedback=feedback, previous_answers=previous_answers)
 
-        respone = self.test_generate(processed_batch)
+        respone = await test_generate(processed_batch)
         
         # Crop output from response
         respone = self.step1_crop_respone(respone)

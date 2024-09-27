@@ -166,6 +166,8 @@ async def generate_rewarding_score(rewarding_prompt):
                     continue
                 try: 
                     exec(response)
+                    if (len(rewarding_score) > 4):
+                        continue
                     print(f"Completed API request of index: {index}")
                     return response
                 except:
@@ -728,7 +730,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=1,
-            learning_rate=3e-4,
+            learning_rate=8e-5,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))

@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     external_images = []
     # External Image Resource 
-    print("Please provide image path and description: ")
+    print("Please provide image path and description")
     control = None
     while (control != 'done'):
         temp_image_path = input("Please provide image_path: ")
@@ -147,7 +147,7 @@ Question: {question}
     while (input_text != 'done'):
         # Thực hiện việc truy xuất thông tin từ RAG module (Top 20)
         output_RAG = RAG_module.find_top_k_embedding(query=input_text, k=20)
-
+        combine_item = ''.join((item + "\n") for item in output_RAG)
         # Sau đó, prompt để mô hình ngôn ngữ trả lời dựa trên thông tin được lựa từ output_RAG
         prompt = f"""
 You are a friendly assistant. Your task is to interact with the user to create a script that meets the user's requirements.
@@ -155,10 +155,10 @@ You are a friendly assistant. Your task is to interact with the user to create a
 User input: {input_text} 
 
 Additionally, there is some supplementary information that will help you respond more accurately to the user's needs:
-{''.join((item + "\n") for item in output_RAG)}
+{combine_item}
 
 Your answer should contain natural language only
-    """
+"""
         print("responing...")
         respone = user_interact_model.generate(batch=[prompt])
         print(f"Model respone:\n{respone[0]}")
