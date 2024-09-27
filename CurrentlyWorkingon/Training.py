@@ -617,6 +617,8 @@ if __name__ == '__main__':
         'description': 'Does the response bring creative and novel ideas that enhance the scene?'},
     {'name': 'Comprehensive Identification',
         'description': 'Does the response clearly identify and detail the environment, main characters, animals, sounds, lighting, camera angles and layout?'},
+    {'name': 'Clarity and Brevity',
+        'description': 'Are the descriptions concise, clear, and easy for the user to quickly understand?'},
 ]
 
     # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
