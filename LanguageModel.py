@@ -169,7 +169,7 @@ Avoid using normal text; format your response strictly as specified above.
         elif (mode == "modify"):
             processed_batch = self.step1_preprocess_data_version_modify(batch=batch, feedback=feedback, previous_answers=previous_answers)
 
-        respone = await test_generate(processed_batch)
+        respone = asyncio.run(test_generate(processed_batch))
         
         # Crop output from response
         respone = self.step1_crop_respone(respone)
@@ -287,7 +287,7 @@ Avoid using normal text; format your response strictly as specified above.
         elif (mode == "modify"):
             processed_batch = self.step2_preprocess_data_version_modify(batch, objects_list,feedback, previous_answers)
 
-        respone = self.test_generate(processed_batch)
+        respone = asyncio.run(test_generate(processed_batch))
         
         # Crop output from response
         respone = self.step2_crop_respone(respone)
@@ -408,7 +408,7 @@ Avoid using normal text; format your response strictly as specified above.
         elif (mode == "modify"):
             processed_batch = self.step3_preprocess_data_version_modify(batch, objects_list, object_classified_list, feedback, previous_answers)
 
-        respone = self.test_generate(processed_batch)
+        respone = asyncio.run(test_generate(processed_batch))
         
         # Crop output from response
         respone = self.step3_crop_respone(respone)
@@ -544,7 +544,7 @@ Avoid using normal text; format your response strictly as specified above.
             processed_batch = self.step4_preprocess_data(batch, base_environment, main_characters_and_creatures, layout_plan)
         elif (mode == "modify"):
             processed_batch = self.step4_preprocess_data_version_modify(batch, base_environment, main_characters_and_creatures, layout_plan, feedback, previous_answers)
-        respone = self.test_generate(processed_batch)
+        respone = asyncio.run(test_generate(processed_batch))
         
         # Crop output from response
         respone = self.step4_crop_respone(respone)
@@ -714,7 +714,7 @@ Avoid using normal text; format your response strictly as specified above.
                                                      feedback=feedback,
                                                      previous_answers=previous_answers)
         
-        respone = self.test_generate(processed_batch)
+        respone = asyncio.run(test_generate(processed_batch))
 
         # Crop output from response
         respone = self.step5_crop_respone(respone)
@@ -801,7 +801,7 @@ Avoid using normal text; format your response strictly as specified above
                                                      step4_respone=step4_respone,
                                                      step5_respone=step5_respone)
 
-        respone = self.test_generate(processed_batch)
+        respone = asyncio.run(test_generate(processed_batch))
 
         # Crop output from response
         respone = self.modify_crop_respone(respone)
