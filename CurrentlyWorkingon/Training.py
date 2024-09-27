@@ -125,13 +125,14 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
     You are an evaluator. Your task is to grade the response provided by the responder to the user's request based on specific criteria, using a 100-point scale.
     The criteria include:
     {formatted_criteria}
-
+    
     The responder's answer is formatted as:
     {processed_batch["answer_format"]}
 
     User's request: "{prompt}"
 
     Responder's answer: "{respone_temp}"
+
 
     After determining your answer, structure them in this format:
     rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
@@ -608,13 +609,23 @@ if __name__ == '__main__':
     EVALUATE_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/evaluate_examples.json'
 
     step1_criteria = [
-        {'name': 'Accuracy',
-            'description': 'Are the objects identified fully and accurately?'},
-        {'name': 'Coverage',
-            'description': 'Is any necessary object for the scene missing?'},
-        {'name': 'Relevance to Requirements',
-            'description': 'Do the objects align with the goals and requirements of the scene?'}
-    ]
+    {'name': 'Accuracy',
+        'description': 'Are the elements identified fully and accurately in alignment with the scene?'},
+    {'name': 'Coverage',
+        'description': 'Does the response include all necessary elements, avoiding missing any key details?'},
+    {'name': 'Relevance',
+        'description': 'Do the elements chosen align with the scene’s goals and requirements?'},
+    {'name': 'Creativity',
+        'description': 'Does the response bring creative and novel ideas that enhance the scene?'},
+    {'name': 'Comprehensive Identification',
+        'description': 'Does the response clearly identify and detail the environment, main characters, animals, sounds, lighting, and camera angles?'},
+    {'name': 'Clarity and Brevity',
+        'description': 'Are the descriptions concise, clear, and easy for the user to quickly understand?'},
+    {'name': 'Engagement',
+        'description': 'Does the response capture the user’s attention and make the scene more engaging?'},
+    {'name': 'User Satisfaction',
+        'description': 'Does the response meet the user’s preferences and leave a positive impression?'}
+]
 
     # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
     adapter_folder = f"/content/drive/MyDrive/adapter_folder" 
@@ -723,7 +734,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=1,
-            learning_rate=6e-6,
+            learning_rate=8e-5,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))
