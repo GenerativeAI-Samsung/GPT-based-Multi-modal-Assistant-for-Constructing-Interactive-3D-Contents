@@ -1063,6 +1063,7 @@ Your job is to classify the objects from the objects list below and natural desc
 3. Illumination: Objects or elements responsible for providing or adjusting light in the scene.
 4. Audio: Objects or systems that generate or manipulate sound.
 5. Camera view: Objects or elements involved in camera positioning, movement, or focus.
+6. Layout Discription: elements that discripting about the layout
 
 Objects list:
 {objects_list}
@@ -1180,7 +1181,7 @@ Avoid using normal text; format your response strictly as specified above.
 For each step, structure your output as:
     layout_plan_i = {
             "title": title_i,
-            "asset_list": [asset_name_1, asset_name_2],
+            "asset_list": [{"name": asset_name_1, "discription": asset_name_1_discription}, {"name": asset_name_2, "discription": asset_name_2_discription}, ...],
             "description": desc_i
     }
 
@@ -1190,7 +1191,9 @@ where title_i is the high-level name for this step, and desc is detailed visual 
             processed_sample = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
 Your job is to create a concrete plan to put them into the scene from the objects list below and natural descriptions.
+Each layout_plan should include camera design, sound design and lighting
 Please think step by step, and give me a multi-step plan to put assets into the scene.
+
 
 Objects list:
 {objects_list}
@@ -1223,7 +1226,7 @@ Avoid using normal text; format your response strictly as specified above.
 For each step, structure your output as:
     layout_plan_i = {
             "title": title_i,
-            "asset_list": [asset_name_1, asset_name_2],
+            "asset_list": [{"name": asset_name_1, "discription": asset_name_1_discription}, {"name": asset_name_2, "discription": asset_name_2_discription}, ...],
             "description": desc_i
     }
 
@@ -1234,6 +1237,7 @@ where title_i is the high-level name for this step, and desc is detailed visual 
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
 Your job is to create a concrete plan to put them into the scene from the objects list below and natural descriptions.
 Please think step by step, and give me a multi-step plan to put assets into the scene.
+Each layout_plan should include camera design, sound design and lighting
 
 User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.
 
@@ -1373,7 +1377,7 @@ You are an assistant for developing multiple Blender scripts to create scenes fo
 Your job is to suggest the initial position of objects and their constraints based on the objects list, the natural descriptions, the constraint list and the layout plan.
 Please think step by step.
 
-User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.
+User has recently provided some feedback on your previous asnswer. Your task this time is to adjust the response to meet the user's feedback.
 
 Objects list:
 {base_environment + main_characters_and_creatures}
