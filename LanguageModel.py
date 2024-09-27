@@ -79,6 +79,7 @@ object_list = [
 ...
 ]
 Each asset is described with a concise name (x) and a detailed visual description (y).
+Asset should be about the environment, main characters, animals, sounds, lighting, camera angles and layout
     """
         for sample in batch:
             processed_sample = f"""
@@ -114,6 +115,7 @@ object_list = [
 ...
 ]
 Each asset is described with a concise name (x) and a detailed visual description (y).
+Asset should be about the environment, main characters, animals, sounds, lighting, camera angles and layout
     """
         for sample, fb, previous_aws in (batch, feedback, previous_answers):
             processed_sample = f"""
@@ -937,6 +939,7 @@ object_list = [
 ...
 ]
 Each asset is described with a concise name (x) and a detailed visual description (y).
+Asset should be about the environment, main characters, animals, sounds, lighting, camera angles and layout
     """
         for sample in batch:
             processed_sample = f"""
@@ -972,6 +975,7 @@ object_list = [
 ...
 ]
 Each asset is described with a concise name (x) and a detailed visual description (y).
+Asset should be about the environment, main characters, animals, sounds, lighting, camera angles and layout
     """
         for sample, fb, previous_aws in (batch, feedback, previous_answers):
             processed_sample = f"""
