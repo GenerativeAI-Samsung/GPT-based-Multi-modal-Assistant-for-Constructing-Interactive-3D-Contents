@@ -165,8 +165,9 @@ async def generate_rewarding_score(rewarding_prompt):
                 if len(response) == 0:
                     continue
                 try: 
-                    exec(response)
-                    if (len(rewarding_score) > 4):
+                    local_vars = {}
+                    exec(response, {}, local_vars)
+                    if (len(local_vars['rewarding_score']) > 4):
                         continue
                     print(f"Completed API request of index: {index}")
                     return response
