@@ -123,6 +123,7 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
         
         rewarding_prompt = f"""
     You are an evaluator. Your task is to grade the response provided by the responder to the user's request based on specific criteria, using a 100-point scale.
+    We hope that Responder's answer provides as many detailed answers about each individual subject as possible, and we also appreciate the creativity of the responses. Therefore, even if the answers include subjects not mentioned in the user request, as long as they help make the scene more vivid and realistic, they are welcome
     The criteria include:
     {formatted_criteria}
     
@@ -734,7 +735,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=1,
-            learning_rate=8e-5,
+            learning_rate=3e-4,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))
