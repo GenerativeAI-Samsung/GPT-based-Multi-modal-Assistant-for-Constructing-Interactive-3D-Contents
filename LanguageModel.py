@@ -38,30 +38,8 @@ class TestUserInteractModel():
     def __init__(self):
         pass
 
-    async def test_generate(self, prompt):
-        async def process_api_request(request, index):
-            while True:
-                try:
-                    await asyncio.sleep(random.randint(10, 20))
-                    print(f"Started API request of index: {index}.")
-                    response = await g4f.ChatCompletion.create_async(
-                        model="gpt-4o-mini",
-                        messages=[{"role": "user", "content": request}],
-                    )
-                    if len(response) == 0:
-                        continue
-                    print(f"Completed API request of index: {index}")
-                    return response
-                except Exception as e:
-                    print(f"Request of index {index} - Error: {str(e)}")
-                    await asyncio.sleep(10)    
-        tasks = []
-        for index, request in enumerate(prompt):
-            tasks.append(process_api_request(request, index))
-        return await asyncio.gather(*tasks, return_exceptions=True)
-
     def generate(self, batch):
-        respone = self.test_generate(batch)
+        respone = asyncio.run(test_generate(batch))
         return respone
 
 class TestScenePlanningModel():
