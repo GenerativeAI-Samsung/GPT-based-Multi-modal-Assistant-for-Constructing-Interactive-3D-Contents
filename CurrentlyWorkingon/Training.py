@@ -347,7 +347,7 @@ def train_prompt(splitted_model_respones, batch, criticism):
     for i, respone in enumerate(splitted_model_respones):
         prompt = f"""
 Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
-Script: {batch[i]["query"]}
+Script: {batch[i]["respone"]}
 
 Response:
 {respone}
