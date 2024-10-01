@@ -34,7 +34,7 @@ class RAG_module():
             scores.append(score)
         
         if (len(score) < k):
-            k = len(score) - 1
+            k = len(score)
 
         top_k_indices = torch.topk(input=torch.tensor(scores), k=k).indices.tolist()
         top_k_chunks = [self.embedding_dicts[i]["sentence"] for i in top_k_indices]
