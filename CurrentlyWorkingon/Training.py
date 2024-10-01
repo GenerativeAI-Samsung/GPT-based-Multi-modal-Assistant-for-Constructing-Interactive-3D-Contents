@@ -129,7 +129,7 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
     {formatted_criteria}
     
     The responder's answer is formatted as:
-    {processed_batch["query"]}
+    {processed_batch["answer_format"]}
 
     User's request: "{prompt}"
 
