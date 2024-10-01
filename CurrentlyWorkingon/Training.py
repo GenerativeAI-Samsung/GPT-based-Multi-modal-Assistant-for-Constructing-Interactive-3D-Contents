@@ -135,7 +135,6 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
 
     Responder's answer: "{respone_temp}"
 
-
     After determining your answer, structure them in this format:
     rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
                         {{"name": criteria2, "score": score2, "description": description2}},
@@ -347,7 +346,7 @@ def train_prompt(splitted_model_respones, batch, criticism):
     for i, respone in enumerate(splitted_model_respones):
         prompt = f"""
 Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
-Script: {batch[i]["respone"]}
+Script: {batch[i]["query"]}
 
 Response:
 {respone}
