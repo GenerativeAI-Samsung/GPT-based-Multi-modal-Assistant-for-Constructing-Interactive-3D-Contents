@@ -78,7 +78,7 @@ Asset should be about the environment, main characters, animals, sounds, lightin
     You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
     Your job is to list the assets individually, ensuring each is a single unit (avoiding composite sets). 
 
-    Natural language description: "{sample['respone']}"    
+    Natural language description: "{sample['query']}"    
     
     After listing the assets, structure them in this format:
     {step1_answer_format}
@@ -129,7 +129,7 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
     {formatted_criteria}
     
     The responder's answer is formatted as:
-    {processed_batch["answer_format"]}
+    {processed_batch["query"]}
 
     User's request: "{prompt}"
 
