@@ -13,18 +13,6 @@ def searching_asset(assets, base_assets):
     return list_index
 
 def proximity_score(score, base_assets, object1, object2, min_distance=0.5, max_distance= 20.0):
-    """
-    Calculates a proximity score indicating how close two objects are, with 1 being very close and 0 being far apart.
-
-    Args:
-        object1 (Layout): The first object's layout.
-        object2 (Layout): The second object's layout.
-        min_distance (float): The distance below which objects are considered to be at optimal closeness. Scores 1.
-        max_distance (float): The distance beyond which objects are considered too far apart. Scores 0.
-
-    Returns:
-        float: A score between 0 and 1 indicating the proximity of the two objects.
-    """
     assets = [object1, object2]
     list_index = searching_asset(assets=assets, base_assets=base_assets)
 
@@ -40,13 +28,7 @@ def proximity_score(score, base_assets, object1, object2, min_distance=0.5, max_
     return score[0]
 
 def euler_to_forward_vector(orientation):
-    """Convert Euler angles to a forward direction vector."""
-    # Converting Euler angles to a forward direction vector 
-    # involves transforming the rotational information encoded in Euler angles 
-    # into a vector that points in the direction the object is facing. 
-
     pitch, yaw, _ = orientation
-    # Assuming the angles are in radians
     x = np.cos(yaw) * np.cos(pitch)
     y = np.sin(yaw) * np.cos(pitch)
     z = np.sin(pitch)

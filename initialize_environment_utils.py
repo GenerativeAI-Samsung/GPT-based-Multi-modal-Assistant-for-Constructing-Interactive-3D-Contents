@@ -21,5 +21,3 @@ class CLIP(nn.Module):
         probs = logits_per_image.softmax(dim=0)
 
         return probs 
-
-class DiffusionModel(nn.Module):

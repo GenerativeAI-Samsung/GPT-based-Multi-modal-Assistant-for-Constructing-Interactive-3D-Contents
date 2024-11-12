@@ -156,7 +156,7 @@ Question: {question}
         
 
         prompt = f"""
-Your task is to create a 3D scene base on the user's requirements.
+Your task is to create a 3D scene.
 
 Your previous answer: {respone}
 

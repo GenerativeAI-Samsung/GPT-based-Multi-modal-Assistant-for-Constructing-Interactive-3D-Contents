@@ -285,6 +285,3 @@ trainer = CustomTrainer(model=peft_model,
                         custom_base_model=base_model,
                         custome_tokenizer=tokenizer)
 result = trainer.train()
-
-
-
