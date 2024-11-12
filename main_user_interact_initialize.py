@@ -141,7 +141,7 @@ Question: {question}
     print("\n------------------------------------------------------")
     print("Initialize RAG Module") 
     Retrieval_module = RAG_module()
-    Retrieval_module.initalize_embedding_database(text=documents_augement)
+    Retrieval_module.initialize_embedding_database(text=documents_augement)
 
     print("------------------------------------------------------")
 
@@ -156,7 +156,7 @@ Question: {question}
         
 
         prompt = f"""
-Your task is to create a 3D scene.
+Your task is to describe the 3D scene based on the user's requirements.
 
 Your previous answer: {respone}
 
