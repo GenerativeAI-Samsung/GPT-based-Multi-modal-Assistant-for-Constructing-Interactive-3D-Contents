@@ -12,7 +12,32 @@ import g4f
 
 from PIL import Image
 
+list_object_avaible = [
+	{"name": "Cat", "action": ["jump", "run", "sit", "walk"]},
+	{"name": "Gull", "action": ["fly"]},
+	{"name": "Duck", "action": ["swim", "jump", "run", "walk"]},
+    {"name": "Human", "action": ["swim", "jump", "run", "walk", "stand"]},
+    {"name": "Wolf", "action": ["swim", "jump", "run", "walk", "stand"]},
+    {"name": "Deer", "action": ["jump", "run", "walk", "stand"]},
+]
 
+list_object_avaible_name =[obj["name"] for obj in list_object_avaible]
+
+list_trajectory = [
+        "zicZac(initialPosition: Euclidean coordinates (x, y, z), finalPosition: Euclidean coordinates (x, y, z))",
+    	"standStill()",
+    	"runStraight(initialPosition: Euclidean coordinates (x, y, z), finalPosition: Euclidean coordinates (x, y, z))",   
+    	"elip(initialPosition: Euclidean coordinates (x, y, z), center: Euclidean coordinates, majorAxisLength: float, minorAxisLength: float, rotationAngle: Euler angles (roll, pitch, yaw))", 
+    	"jump(initialPosition: Euclidean coordinates (x, y, z), apexPosition: Euclidean coordinates (x, y, z), finalPosition: Euclidean coordinates (x, y, z))"
+]
+
+list_object_environement = [
+    {"name": "Tree"},
+	{"name": "Flower"},
+	{"name": "Rock"},
+	{"name": "Bush"},
+    {"name": "River"},
+]
 
 async def test_generate(prompt):
     async def process_api_request(request, index):
@@ -68,8 +93,12 @@ If an object appears multiple times in a scene, you can differentiate each insta
         for sample in batch:
             processed_sample = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description.
+Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description from the list of object available below.
+
 Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
+
+List of object available:
+{list_object_avaible_name}
 
 Natural language description: "{sample}"    
     
@@ -106,10 +135,14 @@ If an object appears multiple times in a scene, you can differentiate each insta
         for sample, fb, previous_aws in (batch, feedback, previous_answers):
             processed_sample = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description.
+Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description from the list of object available below.
+
 Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
 User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.
+
+List of object available:
+{list_object_avaible_name}
 
 Natural language description: "{sample}"    
 
@@ -263,15 +296,15 @@ Avoid using normal text; format your response strictly as specified above.
         cropped_respone_batch = []
         for respone in batch:
             temp1 = respone.split('\nRespone:', 1)[1]
-            if ('object_classified_list = [' in temp1):
-                temp2 = temp1.split('object_classified_list = [')[1]
+            if ('init_pos_ori = [' in temp1):
+                temp2 = temp1.split('init_pos_ori = [')[1]
                 temp3 = temp2.split(']')[0]
-                temp = 'object_classified_list = [' + temp3 + ']'
+                temp = 'init_pos_ori = [' + temp3 + ']'
                 print(f"respone: {temp}")
                 cropped_respone_batch.append(temp)
             else:
-                cropped_respone_batch.append("object_classified_list = []")
-                print(f"respone: object_classified_list = []")
+                cropped_respone_batch.append("init_pos_ori = []")
+                print(f"respone: init_pos_ori = []")
         return cropped_respone_batch
 
     def step2_generate(self, batch, objects_list, mode, feedback=None, previous_answers=None):
@@ -290,38 +323,61 @@ Avoid using normal text; format your response strictly as specified above.
         
         return respone
 
-    def step3_preprocess_data(self, batch, objects_list, object_classified_list):
+    def step3_preprocess_data(self, batch, objects_list, init_pos_ori):
         processed_batch = []
 
         step3_answer_format = """
-For each step, structure your output as:
-    layout_plan_i = {
-            "title": title_i,
-            "asset_list": [asset_name_1, asset_name_2],
-            "description": desc_i
+trajectory = {
+        "total_frames": total_frame,
+        "motions": [
+            {
+                "frame_start": frame_start,
+                "frame_end": frame_end,
+                "trajectory": (trajectory_name, {"param1": param1, "param2": param2, ...})
+                "object": object,
+                "object_action": action,
+            },
+            ...
+        ]
     }
+        - total_frames: Total duration of the animation in frames (an integer).
+        - motions: A list of movements occurring in the animation, where each movement includes:
+            - frame_start: The frame at which the motion begins.
+            - frame_end: The frame at which the motion ends.
+            - trajectory: A tuple containing the name of the trajectory function and its parameters defining the path the object will follow.
+            - action: The specific action performed by the object during the motion.
+"""
 
-where title_i is the high-level name for this step, and desc is detailed visual text description of what it shall look like after layout. 
-    """
         for sample in batch:
             processed_sample = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to create a concrete plan to put them into the scene from the objects list below and natural descriptions.
-Please think step by step, and give me a multi-step plan to put assets into the scene.
+You are tasked with developing Blender scripts to create animation scenes based on natural language descriptions. Your goal is to script the animation sequences for the objects specified in the object list, using the provided natural language description and the initial positions and orientaions of object and the actions they could do.
+The trajectory of each object should be taken from the list of trajectory functions provided below.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
-Objects list:
-{objects_list}
+Instructions:
 
-object list after classified:
-{object_classified_list}
+    - Natural Language Description:
+        {sample}
+
+    - Object List:
+        {objects_list}
+
+    - the initial positions and orientaions of object:
+        {init_pos_ori}
+
+    - Trajectory Functions:
+        {list_trajectory}
+
+    - Action:
+        {list_object_avaible}
 
 Natural language description: {sample}
 
-After listing the assets, structure them in this format:
+After processing the information, present your answer in the following format:
 {step3_answer_format}
 
-Avoid using normal text; format your response strictly as specified above.
-    """
+Note: Avoid using normal text in your response; strictly adhere to the specified format.    
+"""
             processed_sample += f"""
     -------------------------------------------------------------------------
     REMEMBER TO ADVOID USING NORMAL AND STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
@@ -332,45 +388,69 @@ Avoid using normal text; format your response strictly as specified above.
             processed_batch.append(processed_sample)
         return processed_batch
     
-    def step3_preprocess_data_version_modify(self, batch, objects_list, object_classified_list, feedback, previous_answers):
+    def step3_preprocess_data_version_modify(self, batch, objects_list, init_pos_ori, feedback, previous_answers):
         processed_batch = []
 
         step3_answer_format = """
-For each step, structure your output as:
-    layout_plan_i = {
-            "title": title_i,
-            "asset_list": [asset_name_1, asset_name_2],
-            "description": desc_i
+trajectory = {
+        "total_frames": total_frame,
+        "motions": [
+            {
+                "frame_start": frame_start,
+                "frame_end": frame_end,
+                "trajectory": (trajectory_name, {"param1": param1, "param2": param2, ...})
+                "object": object,
+                "object_action": action,
+            },
+            ...
+        ]
     }
+        - total_frames: Total duration of the animation in frames (an integer).
+        - motions: A list of movements occurring in the animation, where each movement includes:
+            - frame_start: The frame at which the motion begins.
+            - frame_end: The frame at which the motion ends.
+            - trajectory: A tuple containing the name of the trajectory function and its parameters defining the path the object will follow.
+            - action: The specific action performed by the object during the motion.
+"""
 
-where title_i is the high-level name for this step, and desc is detailed visual text description of what it shall look like after layout. 
-    """
         for sample, fb, previous_aws in (batch, feedback, previous_answers):
             processed_sample = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to create a concrete plan to put them into the scene from the objects list below and natural descriptions.
-Please think step by step, and give me a multi-step plan to put assets into the scene.
+You are tasked with developing Blender scripts to create animation scenes based on natural language descriptions. Your goal is to script the animation sequences for the objects specified in the object list, using the provided natural language description and the initial positions and orientaions of object and the actions they could do.
+The trajectory of each object should be taken from the list of trajectory functions provided below.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
-User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.
+Instructions:
 
-Objects list:
-{objects_list}
+    - Natural Language Description:
+        {sample}
 
-object list after classified:
-{object_classified_list}
+    - Object List:
+        {objects_list}
 
-Natural language description: {sample}
+    - the initial positions and orientaions of object:
+        {init_pos_ori}
+
+    - Trajectory Functions:
+        {list_trajectory}
+
+    - Action:
+        {list_object_avaible}
+
+User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.        
 
 User Feedback: {fb}
 
 Your previous answer: 
-{previous_aws}
+{previous_aws}        
 
-After listing the assets, structure them in this format:
+Natural language description: {sample}
+
+After processing the information, present your answer in the following format:
 {step3_answer_format}
 
-Avoid using normal text; format your response strictly as specified above.
-    """
+Some information might conflict. Howerver, you should always priority what user said in User Feedback.
+Note: Avoid using normal text in your response; strictly adhere to the specified format.    
+"""
             processed_sample += f"""
     -------------------------------------------------------------------------
     REMEMBER TO ADVOID USING NORMAL AND STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
@@ -386,23 +466,23 @@ Avoid using normal text; format your response strictly as specified above.
         cropped_respone_batch = []
         for respone in batch:
             temp1 = respone.split('\nRespone:', 1)[1]
-            if ('layout_plan' in temp1):
-                temp2 = temp1.split('layout_plan', 1)[1]
+            if ('trajectory =' in temp1):
+                temp2 = temp1.split('trajectory =', 1)[1]
                 temp3 = temp2.rsplit('}', 1)[0]
-                temp = 'layout_plan' + temp3 + '}'
+                temp = 'trajectory =' + temp3 + '}'
                 print(f"respone: {temp}")
                 cropped_respone_batch.append(temp)
             else:
-                cropped_respone_batch.append("layout_plan_1 = {}")
-                print("respone: layout_plan_1 = {}")
+                cropped_respone_batch.append("trajectory = {}")
+                print("respone: trajectory = {}")
         return cropped_respone_batch
 
-    def step3_generate(self, batch, objects_list, object_classified_list, mode, feedback=None, previous_answers=None):
+    def step3_generate(self, batch, objects_list, init_pos_ori, mode, feedback=None, previous_answers=None):
         # Prompt for input
         if (mode == "new"):
-            processed_batch = self.step3_preprocess_data(batch, objects_list, object_classified_list)
+            processed_batch = self.step3_preprocess_data(batch, objects_list, init_pos_ori)
         elif (mode == "modify"):
-            processed_batch = self.step3_preprocess_data_version_modify(batch, objects_list, object_classified_list, feedback, previous_answers)
+            processed_batch = self.step3_preprocess_data_version_modify(batch, objects_list, init_pos_ori, feedback, previous_answers)
 
         respone = asyncio.run(test_generate(processed_batch))
         while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
@@ -412,44 +492,38 @@ Avoid using normal text; format your response strictly as specified above.
         respone = self.step3_crop_respone(respone)
         return respone
 
-    def step4_preprocess_data(self, batch, base_environment, main_characters_and_creatures, layout_plan):
+    def step4_preprocess_data(self, batch, main_object):
         processed_batch = []
 
         step4_answer_format = """
-initial_position_and_orientation = [{"name": obj1, "position": (x1, y1, z1), "orientation": (roll1, pitch1, yaw1)},
-                                    {"name": obj2, "position": (x2, y2, z2), "orientation": (roll2, pitch2, yaw2)},
-                                    ...]
-constraints = [(constraint1, {"param1": "object1", ...}), (constraint2, {"param2": "object2", ...}), ...]
-    """
+object_list = [
+    {"name": obj1},
+    {"name": obj2},
+    ...
+]    
+"""
         
         for sample in batch:
             processed_sample = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to suggest the initial position of objects and their constraints based on the objects list, the natural descriptions, the constraint list and the layout plan.
-Please think step by step.
+You are an assistant for developing Blender scripts to create scenes for various animation projects from natural language descriptions.
 
-Objects list:
-{base_environment + main_characters_and_creatures}
+Your task is to identify and list assets to construct the environment where the scene takes place from the list of assets available below, based on the given description.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
+List of object available:
+    {list_object_environement}
+    
+    
 Natural language description: {sample}
 
-Constraints: 
-proximity_score(object1: Layout, object2: Layout): A constraint enforcing the closeness of two objects, e.g., a chair near a table.
-direction_score(object1: Layout, object2: Layout): The angle of one object is targeting at the other.
-alignment_score(assets: List[Layout], axis: str): Ensuring objects align along a common axis (x, y, z), e.g., paintings aligned vertically on a wall.
-symmetry_score(assets: List[Layout], axis: str): Mirroring objects along an axis (x, y, z), e.g., symmetrical placement of lamps on either side of a bed.
-parallelism_score(assets: List[Layout]): Objects parallel to each other, suggesting direction, e.g., parallel rows of seats in a theater.
-perpendicularity_score(object1: Layout, object2: Layout): Objects intersecting at a right angle, e.g., a bookshelf perpendicular to a desk.
-rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float, float]): a list of objects rotate a cirtain point, e.g., rotating chairs around a meeting table.
-
-Layout plan:
-{layout_plan}   
-
-The answer should include 2 lists, initial_position_and_orientation and constraints, where initial_position_and_orientation is a list of dictionary with keys are object names, their initial positions (Euclidean coordinates) and their initial orientation (Euler angles), and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
-
-After determining initial_position_and_orientation and constraints, structure them in this format:
+After identifying the assets needed to build the environment (excluding the main character objects), structure them in this format:
 {step4_answer_format}
 
+Main character objects to exclude:
+    {main_object}
+
+Include only specific environmental objects essential for making the scene functional. Avoid adding general scene elements (e.g., 'sky,' 'ground,' or 'trajectories').
+If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Tree1," "Tree2," "Flower" and so on.
 Avoid using normal text; format your response strictly as specified above.
 """    
             processed_sample += f"""
@@ -463,51 +537,45 @@ Avoid using normal text; format your response strictly as specified above.
         
         return processed_batch
 
-    def step4_preprocess_data_version_modify(self, batch, base_environment, main_characters_and_creatures, layout_plan, feedback, previous_answers):
+    def step4_preprocess_data_version_modify(self, batch, main_object, feedback, previous_answers):
         processed_batch = []
 
         step4_answer_format = """
-initial_position_and_orientation = [{"name": obj1, "position": (x1, y1, z1), "orientation": (roll1, pitch1, yaw1)},
-                                    {"name": obj2, "position": (x2, y2, z2), "orientation": (roll2, pitch2, yaw2)},
-                                    ...]
-constraints = [(constraint1, {"param1": "object1", ...}), (constraint2, {"param2": "object2", ...}), ...]
-    """
+object_list = [
+    {"name": obj1},
+    {"name": obj2},
+    ...
+]    
+"""
         
         for sample, fb, previous_aws in (batch, feedback, previous_answers):
             processed_sample = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to suggest the initial position of objects and their constraints based on the objects list, the natural descriptions, the constraint list and the layout plan.
-Please think step by step.
+You are an assistant for developing Blender scripts to create scenes for various animation projects from natural language descriptions.
 
-User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.
+Your task is to identify and list assets to construct the environment where the scene takes place from the list of assets available below, based on the given description.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
-Objects list:
-{base_environment + main_characters_and_creatures}
+List of object available:
+    {list_object_environement}
 
-Natural language description: {sample}
-
-Constraints: 
-proximity_score(object1: Layout, object2: Layout): A constraint enforcing the closeness of two objects, e.g., a chair near a table.
-direction_score(object1: Layout, object2: Layout): The angle of one object is targeting at the other.
-alignment_score(assets: List[Layout], axis: str): Ensuring objects align along a common axis (x, y, z), e.g., paintings aligned vertically on a wall.
-symmetry_score(assets: List[Layout], axis: str): Mirroring objects along an axis (x, y, z), e.g., symmetrical placement of lamps on either side of a bed.
-parallelism_score(assets: List[Layout]): Objects parallel to each other, suggesting direction, e.g., parallel rows of seats in a theater.
-perpendicularity_score(object1: Layout, object2: Layout): Objects intersecting at a right angle, e.g., a bookshelf perpendicular to a desk.
-rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float, float]): a list of objects rotate a cirtain point, e.g., rotating chairs around a meeting table.
-
-Layout plan:
-{layout_plan}   
+User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.        
 
 User Feedback: {fb}
 
 Your previous answer: 
-{previous_aws}
+{previous_aws}            
 
-The answer should include 2 lists, initial_position_and_orientation and constraints, where initial_position_and_orientation is a list of dictionary with keys are object names, their initial positions (Euclidean coordinates) and their initial orientation (Euler angles), and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
+Natural language description: {sample}
 
-After determining initial_position_and_orientation and constraints, structure them in this format:
+After identifying the assets needed to build the environment (excluding the main character objects), structure them in this format:
 {step4_answer_format}
 
+Main character objects to exclude:
+    {main_object}
+
+Include only specific environmental objects essential for making the scene functional. Avoid adding general scene elements (e.g., 'sky,' 'ground,' or 'trajectories').
+If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Tree1," "Tree2," "Flower" and so on.
+Some information might conflict. Howerver, you should always priority what user said in user Feedback.
 Avoid using normal text; format your response strictly as specified above.
 """    
             processed_sample += f"""
@@ -525,23 +593,23 @@ Avoid using normal text; format your response strictly as specified above.
         cropped_respone_batch = []
         for respone in batch:
             temp1 = respone.split('\nRespone:', 1)[1]
-            if ('initial_position =' in temp1):
-                temp2 = temp1.split('initial_position =', 1)[1]
+            if ('object_list =' in temp1):
+                temp2 = temp1.split('object_list =', 1)[1]
                 temp3 = temp2.rsplit(']', 1)[0]
-                temp = 'initial_position =' + temp3 + ']'
+                temp = 'object_list =' + temp3 + ']'
                 print(f"respone: {temp}")
                 cropped_respone_batch.append(temp)
             else:
-                cropped_respone_batch.append("initial_position = {}\nconstraints = []")
-                print("respone: initial_position = {}\nconstraints = []")
+                cropped_respone_batch.append("object_list = {}")
+                print("respone: object_list = {}")
         return cropped_respone_batch
 
-    def step4_generate(self, batch, base_environment, main_characters_and_creatures, layout_plan, mode, feedback=None, previous_answers=None):
+    def step4_generate(self, batch, main_object, mode, feedback=None, previous_answers=None):
         # Prompt for input
         if (mode == "new"):
-            processed_batch = self.step4_preprocess_data(batch, base_environment, main_characters_and_creatures, layout_plan)
+            processed_batch = self.step4_preprocess_data(batch, main_object)
         elif (mode == "modify"):
-            processed_batch = self.step4_preprocess_data_version_modify(batch, base_environment, main_characters_and_creatures, layout_plan, feedback, previous_answers)
+            processed_batch = self.step4_preprocess_data_version_modify(batch, main_object, feedback, previous_answers)
         
         respone = asyncio.run(test_generate(processed_batch))
         while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
@@ -551,55 +619,37 @@ Avoid using normal text; format your response strictly as specified above.
         respone = self.step4_crop_respone(respone)
         return respone
     
-    def step5_preprocess_data(self, batch, main_characters_and_creatures, layout_plan, list_of_object, object_initial_position):
+    def step5_preprocess_data(self, batch, object_list):
         processed_batch = []
 
         step5_answer_format = """
-trajectory = {
-    "total_frames": total_frame,
-    "motions": [
-        {
-            "frame_start": frame_start,
-            "frame_end": frame_end,
-            "position_trajectory": [(x1, y1, z1), (x2, y2, z2), ...],  
-            "orientation_trajectory": [(roll1, pitch1, yaw1), (roll2, pitch2, yaw2), ...],               
-            "object": object,
-            "object_action": action,
-            "sound": sound
-        },
-        ...
-    ]
-}
-Where total_frames represents the total duration of the video in frames, given as an integer. The motions field is a list of movements that occur in the video, where each motion is defined by the following elements:
-- frame_start: The frame at which the motion begins.
-- frame_end: The frame at which the motion ends.
-- position_trajectory: A list of tuples representing Euclidean coordinates (x, y, z) that define the path the object will follow in 3D space. These points will later be used for interpolation to create a smooth trajectory.
-- orientaion_trajectory: A list of tuples representing the object's orientation in Euclidean space, typically described by Euler angles (roll, pitch, yaw) for rotation, allowing smooth transitions and realistic rotation behavior.
-- object: The name of the object being animated.
-- action: The specific action the object performs during this motion.
-- sound: The sound associated with the object during this motion, or None if no sound is involved.
+initial_position = {objectName1: (x1, y1, z1), objectName2: (x2, y2, z2), ...}
+constraints = [(nameOfConstraint1, ("param1": "object1", ...)), ...]
+    
+The answer should include 2 lists, initial_position and constraints, where initial_positions is a dictionary with keys as object names and values as their initial positions, and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
 """
         
         for sample in batch:
             processed_sample = f"""
-You are responsible for developing multiple Blender scripts to create animation scenes based on natural language descriptions. Your task is to script the animation sequences for the objects listed in main_characters_and_creatures, using the provided natural language descriptions, the scene layout plan, the list of objects, and their initial positions.    
-please think step by step
+You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
+Your job is to suggest the initial position of objects and their constraints based on the objects list, the natural descriptions, the constraint list to create a suitable enviroment for scene described in the natural descriptions happen.
+Please think step by step.
 
-main_characters_and_creatures list:
-{main_characters_and_creatures}
+Objects list:
+{object_list}
 
 Natural language description: {sample}
 
-Scene layout plan:
-{layout_plan}
+Constraints: 
+proximity_score(object1: Layout, object2: Layout): A constraint enforcing the closeness of two objects, e.g., a chair near a table.
+direction_score(object1: Layout, object2: Layout): The angle of one object is targeting at the other.
+alignment_score(assets: List[Layout], axis: str): Ensuring objects align along a common axis (x, y, z), e.g., paintings aligned vertically on a wall.
+symmetry_score(assets: List[Layout], axis: str): Mirroring objects along an axis (x, y, z), e.g., symmetrical placement of lamps on either side of a bed.
+parallelism_score(assets: List[Layout]): Objects parallel to each other, suggesting direction, e.g., parallel rows of seats in a theater.
+perpendicularity_score(object1: Layout, object2: Layout): Objects intersecting at a right angle, e.g., a bookshelf perpendicular to a desk.
+rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float, float]): a list of objects rotate a cirtain point, e.g., rotating chairs around a meeting table.
 
-List of objects:
-{list_of_object}
-
-Objects initial position:
-{object_initial_position}
-
-After determining your answer, structure them in this format:
+After determining initial_position and constraints, structure them in this format:
 {step5_answer_format}
 
 Avoid using normal text; format your response strictly as specified above.
@@ -614,64 +664,47 @@ Avoid using normal text; format your response strictly as specified above.
             processed_batch.append(processed_sample)
         return processed_batch
     
-    def step5_preprocess_data_version_modify(self, batch, main_characters_and_creatures, layout_plan, list_of_object, object_initial_position, feedback, previous_answers):
+    def step5_preprocess_data_version_modify(self, batch, object_list, feedback, previous_answers):
         processed_batch = []
 
         step5_answer_format = """
-trajectory = {
-    "total_frames": total_frame,
-    "motions": [
-        {
-            "frame_start": frame_start,
-            "frame_end": frame_end,
-            "position_trajectory": [(x1, y1, z1), (x2, y2, z2), ...],  
-            "orientation_trajectory": [(roll1, pitch1, yaw1), (roll2, pitch2, yaw2), ...],               
-            "object": object,
-            "object_action": action,
-            "sound": sound
-        },
-        ...
-    ]
-}
-Where total_frames represents the total duration of the video in frames, given as an integer. The motions field is a list of movements that occur in the video, where each motion is defined by the following elements:
-- frame_start: The frame at which the motion begins.
-- frame_end: The frame at which the motion ends.
-- position_trajectory: A list of tuples representing Euclidean coordinates (x, y, z) that define the path the object will follow in 3D space. These points will later be used for interpolation to create a smooth trajectory.
-- orientaion_trajectory: A list of tuples representing the object's orientation in Euclidean space, typically described by Euler angles (roll, pitch, yaw) for rotation, allowing smooth transitions and realistic rotation behavior.
-- object: The name of the object being animated.
-- action: The specific action the object performs during this motion.
-- sound: The sound associated with the object during this motion, or None if no sound is involved.
+initial_position = {objectName1: (x1, y1, z1), objectName2: (x2, y2, z2), ...}
+constraints = [(nameOfConstraint1, ("param1": "object1", ...)), ...]
+    
+The answer should include 2 lists, initial_position and constraints, where initial_positions is a dictionary with keys as object names and values as their initial positions, and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
 """
         
         for sample, fb, previous_aws in (batch, feedback, previous_answers):
             processed_sample = f"""
-You are responsible for developing multiple Blender scripts to create animation scenes based on natural language descriptions. Your task is to script the animation sequences for the objects listed in main_characters_and_creatures, using the provided natural language descriptions, the scene layout plan, the list of objects, and their initial positions.    
-please think step by step
+You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
+Your job is to suggest the initial position of objects and their constraints based on the objects list, the natural descriptions, the constraint list to create a suitable enviroment for scene described in the natural descriptions happen.
+Please think step by step.
+
+Objects list:
+{object_list}
 
 User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.
-
-main_characters_and_creatures list:
-{main_characters_and_creatures}
-
-Natural language description: {sample}
-
-Scene layout plan:
-{layout_plan}
-
-List of objects:
-{list_of_object}
-
-Objects initial position:
-{object_initial_position}
 
 User Feedback: {fb}
 
 Your previous answer: 
 {previous_aws}
 
-After determining your answer, structure them in this format:
+Natural language description: {sample}
+
+Constraints: 
+proximity_score(object1: Layout, object2: Layout): A constraint enforcing the closeness of two objects, e.g., a chair near a table.
+direction_score(object1: Layout, object2: Layout): The angle of one object is targeting at the other.
+alignment_score(assets: List[Layout], axis: str): Ensuring objects align along a common axis (x, y, z), e.g., paintings aligned vertically on a wall.
+symmetry_score(assets: List[Layout], axis: str): Mirroring objects along an axis (x, y, z), e.g., symmetrical placement of lamps on either side of a bed.
+parallelism_score(assets: List[Layout]): Objects parallel to each other, suggesting direction, e.g., parallel rows of seats in a theater.
+perpendicularity_score(object1: Layout, object2: Layout): Objects intersecting at a right angle, e.g., a bookshelf perpendicular to a desk.
+rotation_uniformity_score(objects: List[Layout], center: Tuple[float, float, float]): a list of objects rotate a cirtain point, e.g., rotating chairs around a meeting table.
+
+After determining initial_position and constraints, structure them in this format:
 {step5_answer_format}
 
+Some information might conflict. Howerver, you should always priority what user said in user Feedback.
 Avoid using normal text; format your response strictly as specified above.
 """    
             processed_sample += f"""
@@ -689,31 +722,26 @@ Avoid using normal text; format your response strictly as specified above.
         cropped_respone_batch = []
         for respone in batch:
             temp1 = respone.split('\nRespone:', 1)[1]
-            if ('trajectory' in temp1):
-                temp2 = temp1.split('trajectory', 1)[1]
-                temp3 = temp2.rsplit('}', 1)[0]
-                temp = 'trajectory' + temp3 + '}'
+            if ('initial_position' in temp1):
+                temp2 = temp1.split('initial_position', 1)[1]
+                temp3 = temp2.rsplit(']', 1)[0]
+                temp = 'initial_position' + temp3 + ']'
                 print(f"respone: {temp}")
                 cropped_respone_batch.append(temp)
             else:
-                cropped_respone_batch.append("trajectory = []")
-                print("respone: trajectory = []")
+                cropped_respone_batch.append("initial_position = []\nconstraints=[]")
+                print("respone: initial_position = []\nconstraints=[]")
         return cropped_respone_batch
     
-    def step5_generate(self, batch, main_characters_and_creatures, layout_plan, list_of_object, object_initial_position, mode, feedback=None, previous_answers=None):
+    def step5_generate(self, batch, object_list, mode, feedback=None, previous_answers=None):
         # Prompt for input
         if (mode == "new"):
-            processed_batch = self.step5_preprocess_data(batch=batch, main_characters_and_creatures=main_characters_and_creatures, 
-                                                     layout_plan=layout_plan,
-                                                     list_of_object=list_of_object,
-                                                     object_initial_position=object_initial_position)
+            processed_batch = self.step5_preprocess_data(batch=batch,object_list=object_list)
         elif (mode == "modify"):
-            processed_batch = self.step5_preprocess_data_version_modify(batch=batch, main_characters_and_creatures=main_characters_and_creatures, 
-                                                     layout_plan=layout_plan,
-                                                     list_of_object=list_of_object,
-                                                     object_initial_position=object_initial_position,
-                                                     feedback=feedback,
-                                                     previous_answers=previous_answers)
+            processed_batch = self.step5_preprocess_data_version_modify(batch=batch, 
+                                                                object_list=object_list,
+                                                                feedback=feedback,
+                                                                previous_answers=previous_answers)
         
         respone = asyncio.run(test_generate(processed_batch))
         while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
@@ -740,19 +768,19 @@ change_step = [step1, step2, ...]
             processed_sample = f"""
 Your task is to determine which steps in the following 3D scene construction process need to be adjusted to meet the user's requirements:
 
-Step 1: Identify the objects that will appear in the 3D scene.
+Step 1: Identify main objects in the scene
 {step1_respone}
 
-Step 2: Classify the types of the identified objects.
+Step 2: Identify main objects's location and orientation
 {step2_respone}
 
-Step 3: Generate a general description of the layout.
+Step 3: Generate motion and trajectory for main objects 
 {step3_respone}
 
-Step 4: Generate the initial location coordinates of the objects and the constraints between them.
+Step 4: Identify environment objects
 {step4_respone}
 
-Step 5: Generate the motion script of the main objects.
+Step 5: Generate the initial location coordinates of the environment objects and the constraints between them.
 {step5_respone}
 
 User's requirements: {sample}
@@ -788,7 +816,6 @@ Avoid using normal text; format your response strictly as specified above
                 print("respone: change_step = []")
         return cropped_respone_batch
 
-
     def modified_user_request(self, 
                               batch, 
                               step1_respone, 
@@ -812,7 +839,6 @@ Avoid using normal text; format your response strictly as specified above
         respone = self.modify_crop_respone(respone)
         
         return respone
-
 
 class VisionLangugeModel(nn.Module):
     def __init__(self):
