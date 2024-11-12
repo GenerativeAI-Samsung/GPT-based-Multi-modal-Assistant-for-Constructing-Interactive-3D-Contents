@@ -12,6 +12,8 @@ import g4f
 
 from PIL import Image
 
+
+
 async def test_generate(prompt):
     async def process_api_request(request, index):
         while True:
@@ -24,6 +26,7 @@ async def test_generate(prompt):
                 )
                 if len(response) == 0:
                     continue
+                print(response[0])
                 print(f"Completed API request of index: {index}")
                 return response
             except Exception as e:
@@ -40,6 +43,8 @@ class TestUserInteractModel():
 
     def generate(self, batch):
         respone = asyncio.run(test_generate(batch))
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = asyncio.run(test_generate(batch))
         return respone
 
 class TestScenePlanningModel():
@@ -51,18 +56,20 @@ class TestScenePlanningModel():
 
         step1_answer_format = """
 object_list = [
-{"name": x1, "description": y1},
-{"name": x2, "description": y2},
-{"name": x3, "description": y3},
+{"name": obj1},
+{"name": obj2}
 ...
 ]
-Each asset is described with a concise name (x) and a detailed visual description (y).
-Asset should be about the environment, main characters, animals, sounds, lighting, camera angles and layout
-    """
+
+Each asset is described with a concise name (x), but only include the specific objects mentioned. Avoid including general scene elements (e.g., sky, ground, trajectories). 
+If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Cat1," "Cat2," "Cat3," and so on.    
+"""
+
         for sample in batch:
             processed_sample = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to list the assets individually, ensuring each is a single unit (avoiding composite sets). 
+Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
 Natural language description: "{sample}"    
     
@@ -87,18 +94,20 @@ Avoid using normal text; format your response strictly as specified above.
 
         step1_answer_format = """
 object_list = [
-{"name": x1, "description": y1},
-{"name": x2, "description": y2},
-{"name": x3, "description": y3},
+{"name": obj1},
+{"name": obj2}
 ...
 ]
-Each asset is described with a concise name (x) and a detailed visual description (y).
-Asset should be about the environment, main characters, animals, sounds, lighting, camera angles and layout
-    """
+
+Each asset is described with a concise name (x), but only include the specific objects mentioned. Avoid including general scene elements (e.g., sky, ground, trajectories). 
+If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Cat1," "Cat2," "Cat3," and so on.        
+"""
+
         for sample, fb, previous_aws in (batch, feedback, previous_answers):
             processed_sample = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your job is to list the assets individually, ensuring each is a single unit (avoiding composite sets). 
+Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
 User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.
 
@@ -111,7 +120,7 @@ Your previous answer:
 
 After listing the assets, structure them in this format:
 {step1_answer_format}
-
+Some information might conflict. Howerver, you should always priority what user said in User Feedback.
 Avoid using normal text; format your response strictly as specified above.
     """
             processed_sample += f"""
@@ -146,8 +155,10 @@ Avoid using normal text; format your response strictly as specified above.
             processed_batch = self.step1_preprocess_data(batch=batch)
         elif (mode == "modify"):
             processed_batch = self.step1_preprocess_data_version_modify(batch=batch, feedback=feedback, previous_answers=previous_answers)
-
+        
         respone = asyncio.run(test_generate(processed_batch))
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = asyncio.run(test_generate(processed_batch))
         
         # Crop output from response
         respone = self.step1_crop_respone(respone)
@@ -158,30 +169,35 @@ Avoid using normal text; format your response strictly as specified above.
         processed_batch = []
 
         step2_answer_format = """
-object_classified_list = [{"name": "base_environment", "objects": (obj1, obj2, ...)},
-                        {"name": "main_characters_and_creatures", "objects": (obj8, obj9, ...)},
-                        {"name": "illumination", "objects": (obj15, obj16, ...)},
-                        {"name": "audio", "objects": (obj23, obj24, obj25)}
-                        {"name": "camera_view", "objects": (obj21, obj22, ...)}]
+init_pos_ori = [
+    {"name": obj1, "pos": (x1, y1, z1), "ori": (roll1, pitch1, yaw1)},
+    {"name": obj2, "pos": (x2, y2, z2), "ori": (roll2, pitch2, yaw2)},
+    ...
+]
+
+Ensure the coordinates and orientations reflect the described actions and positions of objects.
 """
+
         for sample in batch:
             processed_sample = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural descriptions.
-Your job is to classify the objects from the objects list below and natural descriptions into four groups: 
-1. Base environment: Objects that form the background, scenery, or surroundings.
-2. Main characters and creatures: The primary characters and creatures featured in the animation.
-3. Illumination: Objects or elements responsible for providing or adjusting light in the scene.
-4. Audio: Objects or systems that generate or manipulate sound.
-5. Camera view: Objects or elements involved in camera positioning, movement, or focus.
+You are an assistant for developing Blender scripts to create scenes based on natural descriptions.
+
+Your task is to analyze the description and suggest initial positions and orientations for the objects listed.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
 Objects list:
 {objects_list}
 
 Natural language description: {sample}
 
-After listing the assets, structure them in this format:
-{step2_answer_format}
+Requirements:
+Provide a list called init_pos_ori, consisting of dictionaries for each object with:
+- Object name
+- Initial position as Euclidean coordinates (x, y, z)
+- Initial orientation as Euler angles (roll, pitch, yaw)
 
+After determining your answer, structure them in this format:
+{step2_answer_format}
 Avoid using normal text; format your response strictly as specified above.
     """
             processed_sample += f"""
@@ -199,21 +215,20 @@ Avoid using normal text; format your response strictly as specified above.
         processed_batch = []
 
         step2_answer_format = """
-object_classified_list = [{"name": "base_environment", "objects": (obj1, obj2, ...)},
-                        {"name": "main_characters_and_creatures", "objects": (obj8, obj9, ...)},
-                        {"name": "illumination", "objects": (obj15, obj16, ...)},
-                        {"name": "audio", "objects": (obj23, obj24, obj25)}
-                        {"name": "camera_view", "objects": (obj21, obj22, ...)}]
+init_pos_ori = [
+    {"name": obj1, "pos": (x1, y1, z1), "ori": (roll1, pitch1, yaw1)},
+    {"name": obj2, "pos": (x2, y2, z2), "ori": (roll2, pitch2, yaw2)},
+    ...
+]
+
+Ensure the coordinates and orientations reflect the described actions and positions of objects.
 """
         for sample, fb, previous_aws in (batch, feedback, previous_answers):
             processed_sample = f"""
-You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural descriptions.
-Your job is to classify the objects from the objects list below and natural descriptions into four groups: 
-1. Base environment: Objects that form the background, scenery, or surroundings.
-2. Main characters and creatures: The primary characters and creatures featured in the animation.
-3. Illumination: Objects or elements responsible for providing or adjusting light in the scene.
-4. Audio: Objects or systems that generate or manipulate sound.
-5. Camera view: Objects or elements involved in camera positioning, movement, or focus.
+You are an assistant for developing Blender scripts to create scenes based on natural descriptions.
+
+Your task is to analyze the description and suggest initial positions and orientations for the objects listed.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
 User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.
 
@@ -230,6 +245,7 @@ Your previous answer:
 After listing the assets, structure them in this format:
 {step2_answer_format}
 
+Some information might conflict. Howerver, you should always priority what user said in User Feedback.
 Avoid using normal text; format your response strictly as specified above.
     """
             processed_sample += f"""
@@ -266,6 +282,8 @@ Avoid using normal text; format your response strictly as specified above.
             processed_batch = self.step2_preprocess_data_version_modify(batch, objects_list,feedback, previous_answers)
 
         respone = asyncio.run(test_generate(processed_batch))
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = asyncio.run(test_generate(processed_batch))
         
         # Crop output from response
         respone = self.step2_crop_respone(respone)
@@ -387,6 +405,8 @@ Avoid using normal text; format your response strictly as specified above.
             processed_batch = self.step3_preprocess_data_version_modify(batch, objects_list, object_classified_list, feedback, previous_answers)
 
         respone = asyncio.run(test_generate(processed_batch))
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = asyncio.run(test_generate(processed_batch))
         
         # Crop output from response
         respone = self.step3_crop_respone(respone)
@@ -522,7 +542,10 @@ Avoid using normal text; format your response strictly as specified above.
             processed_batch = self.step4_preprocess_data(batch, base_environment, main_characters_and_creatures, layout_plan)
         elif (mode == "modify"):
             processed_batch = self.step4_preprocess_data_version_modify(batch, base_environment, main_characters_and_creatures, layout_plan, feedback, previous_answers)
+        
         respone = asyncio.run(test_generate(processed_batch))
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = asyncio.run(test_generate(processed_batch))
         
         # Crop output from response
         respone = self.step4_crop_respone(respone)
@@ -693,6 +716,8 @@ Avoid using normal text; format your response strictly as specified above.
                                                      previous_answers=previous_answers)
         
         respone = asyncio.run(test_generate(processed_batch))
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = asyncio.run(test_generate(processed_batch))
 
         # Crop output from response
         respone = self.step5_crop_respone(respone)
@@ -780,6 +805,8 @@ Avoid using normal text; format your response strictly as specified above
                                                      step5_respone=step5_respone)
 
         respone = asyncio.run(test_generate(processed_batch))
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = asyncio.run(test_generate(processed_batch))
 
         # Crop output from response
         respone = self.modify_crop_respone(respone)

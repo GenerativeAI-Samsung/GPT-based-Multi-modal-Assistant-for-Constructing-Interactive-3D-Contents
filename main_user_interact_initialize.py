@@ -63,8 +63,12 @@ After getting the answers, format them as follows:
 external_images[{i}]["image_questions"] = [question1, question2, ...]
 
 Avoid using normal text; format your response strictly as specified above.
-"""
+""" 
+        
         respone = user_interact_model.generate(batch=[prompt])
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = user_interact_model.generate(batch=[prompt])
+            
         question_asked.append({"index": i, "prompt": prompt, "respone": respone[0]})
     print("Done!")
     print("------------------------------------------------------")
@@ -105,6 +109,7 @@ Avoid using normal text; format your response strictly as specified above.
             # Prompt cho mô hình Vision Language trả lời, dựa vào: Hình ảnh, Image description, Image Question
             prompt = f"""
 Based on the image and the description of the picture below, please answer the following questions related to the image
+Some question may not relevant to the image and description. In that case, you should answer "Unknown"
 Description of the image: {image["image_description"]}
 Question: {question}
 """
@@ -147,30 +152,42 @@ Question: {question}
 
     print("Start User Interact Interface...")
     
+    initialPrompt = False
     respone = ""
     while (input_text != 'done'):
+
         # Thực hiện việc truy xuất thông tin từ RAG module (Top 20)
         output_RAG = Retrieval_module.find_top_k_embedding(query=input_text, k=20)
         combine_item = ''.join((item + "\n") for item in output_RAG)
         # Sau đó, prompt để mô hình ngôn ngữ trả lời dựa trên thông tin được lựa từ output_RAG
         
-
         prompt = f"""
-Your task is to describe the 3D scene based on the user's requirements.
-
+Describe a 3D scene in a single, continuous paragraph, incorporating all necessary details, including the setting, main objects, background elements, spatial layout, coordinates, constraints, and any object motions or interactions. Ensure the description flows naturally without using numbered sections or headers. Focus on providing a clear, vivid picture of the scene's overall look and feel, making it suitable for immediate translation into a 3D environment.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 Your previous answer: {respone}
 
 User input: {input_text} 
 
+"""
+        if (initialPrompt == False):
+            prompt += f"""
 Additionally, there is some supplementary information that will help you respond more accurately to the user's needs:
 {combine_item}
+
+"""
+            initialPrompt = True
+        prompt += """
+Some information might conflict. Howerver, you should always priority what in User input
 """
         print(f"prompt: {prompt}")
         print("responing...")
+
         respone = user_interact_model.generate(batch=[prompt])
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = user_interact_model.generate(batch=[prompt])
+
         print(f"Model respone:\n{respone[0]}")
 
-        Retrieval_module.initalize_embedding_database(text=respone[0])
         input_text = input("Do you have any further modification (press 'done' if no, press 'yes' if yes): ") 
 
     # lưu lại các embedding vector thành file .json
@@ -179,6 +196,6 @@ Additionally, there is some supplementary information that will help you respond
         outfile.write(json_object)
     
     # Lưu câu trả lời lại để sử dụng cho phần sau
-    json_object = json.dumps(respone)
+    json_object = json.dumps({"user_interact_result": respone})
     with open("/content/user_interact_result.json", "w") as outfile:
         outfile.write(json_object)
