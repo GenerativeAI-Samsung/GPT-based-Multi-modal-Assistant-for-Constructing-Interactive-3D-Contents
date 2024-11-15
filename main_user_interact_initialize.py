@@ -191,9 +191,9 @@ Some information might conflict. Howerver, you should always priority what in Us
         input_text = input("Do you have any further modification (press 'done' if no, press 'yes' if yes): ") 
 
     # lưu lại các embedding vector thành file .json
-    json_object = json.dumps(Retrieval_module.embedding_dicts)
-    with open("/content/embedding_dicts.json", "w") as outfile:
-        outfile.write(json_object)
+    # json_object = json.dumps(Retrieval_module.embedding_dicts)
+    # with open("/content/embedding_dicts.json", "w") as outfile:
+    #     outfile.write(json_object)
     
     # Lưu câu trả lời lại để sử dụng cho phần sau
     json_object = json.dumps({"user_interact_result": respone})
