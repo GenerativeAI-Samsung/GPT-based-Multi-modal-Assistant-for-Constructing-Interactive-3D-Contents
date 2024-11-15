@@ -500,7 +500,7 @@ object_list = [
     {"name": obj1},
     {"name": obj2},
     ...
-]    
+]  
 """
         
         for sample in batch:
@@ -522,6 +522,8 @@ After identifying the assets needed to build the environment (excluding the main
 Main character objects to exclude:
     {main_object}
 
+After processing the information, present your answer in the following format:
+{step4_answer_format}
 Include only specific environmental objects essential for making the scene functional. Avoid adding general scene elements (e.g., 'sky,' 'ground,' or 'trajectories').
 If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Tree1," "Tree2," "Flower" and so on.
 Avoid using normal text; format your response strictly as specified above.
@@ -572,6 +574,9 @@ After identifying the assets needed to build the environment (excluding the main
 
 Main character objects to exclude:
     {main_object}
+
+After processing the information, present your answer in the following format:
+{step4_answer_format}    
 
 Include only specific environmental objects essential for making the scene functional. Avoid adding general scene elements (e.g., 'sky,' 'ground,' or 'trajectories').
 If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Tree1," "Tree2," "Flower" and so on.
