@@ -31,14 +31,21 @@ if __name__ == '__main__':
 
 # -----------------------------------------------------------------------------
 
+    model_choice = input("Which model you want to use? (1 - GPT api, 2 - Llam3 8B): ")
     MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
 # Khởi tạo Llama3-8B-Quantization
-    print("------------------------------------------------------")
-    print("Initialize Llama3-8B-Quantization...")
-    # user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
-    user_interact_model = TestUserInteractModel()
-    print("Done!")
-    print("------------------------------------------------------")
+    if (int(model_choice) == 1):
+        print("------------------------------------------------------")
+        print("Initialize GPT api...")
+        user_interact_model = TestUserInteractModel()
+        print("Done!")
+        print("------------------------------------------------------")
+    elif (int(model_choice) == 2):
+        print("------------------------------------------------------")
+        print("Initialize LoftQ/Meta-Llama-3-8B-4bit-64rank...")
+        user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
+        print("Done!")
+        print("------------------------------------------------------")
 
 # Đối với External Text Resource, trựa tiếp đưa vào list các documents_augement
     documents_augement = [external_texts]

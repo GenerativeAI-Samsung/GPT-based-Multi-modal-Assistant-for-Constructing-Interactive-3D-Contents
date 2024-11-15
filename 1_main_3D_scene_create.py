@@ -13,15 +13,22 @@ if __name__ == '__main__':
     print("Done!")
     print("------------------------------------------------------")
 
-    # Loading Model
-    print("\n------------------------------------------------------")
-    print("Loading Llama3 8B with adapter...")
-    # MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
-    # adapter_layers = []
-    # scene_plan_model = ScenePlanningModel(MODEL_ID=MODEL_ID, adapter_layers=adapter_layers)
-    scene_plan_model = TestScenePlanningModel()
-    print("Done!")
-    print("------------------------------------------------------")
+    model_choice = input("Which model you want to use? (1 - GPT api, 2 - Llam3 8B): ")
+    MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
+    # Khởi tạo Llama3-8B-Quantization
+    if (int(model_choice) == 1):
+        print("------------------------------------------------------")
+        print("Initialize GPT api...")
+        # user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
+        scene_plan_model = TestScenePlanningModel()
+        print("Done!")
+        print("------------------------------------------------------")
+    elif (int(model_choice) == 2):
+        print("------------------------------------------------------")
+        print("Initialize LoftQ/Meta-Llama-3-8B-4bit-64rank...")
+        scene_plan_model = ScenePlanningModel(MODEL_ID=MODEL_ID)
+        print("Done!")
+        print("------------------------------------------------------")
 
     # Phase 1: Xác định các vật thể chính
     print("\n------------------------------------------------------")
