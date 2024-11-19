@@ -9,7 +9,7 @@ if __name__ == '__main__':
     print("Loading request...")
     with open('user_interact_result.json', 'r') as openfile:
         input_text = json.load(openfile)
-    input_text = input_text["user_interact_result"][0]
+    input_text = input_text["user_interact_result"]
     print("Done!")
     print("------------------------------------------------------")
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         # Phase 1: Xác định các vật thể chính
         print("\n------------------------------------------------------")
         print("Xác định các vật thể chính")
-        step1_respone = scene_plan_model.step1_generate(batch=[input_text], 
+        step1_respone = scene_plan_model.step1_generate(batch=input_text, 
                                                         mode="modify",
                                                         feedback=modify_command, 
                                                         previous_answers=step1_respone_previous)
@@ -102,9 +102,13 @@ if __name__ == '__main__':
         print("------------------------------------------------------")
         exec(step1_respone[0])
 
+        # Update respone
+        input_text = scene_plan_model.updatePrompt(batch=input_text, 
+                                                   batchComand=[modify_command])
+
         print("\n------------------------------------------------------")
         print("Xác định hướng và vị trí ban đầu của các vật thể")
-        step2_respone = scene_plan_model.step2_generate(batch=[input_text], objects_list=step1_respone[0], mode="new")
+        step2_respone = scene_plan_model.step2_generate(batch=input_text, objects_list=step1_respone[0], mode="new")
         print("Done!")
         print("------------------------------------------------------")
 
@@ -126,7 +130,7 @@ if __name__ == '__main__':
         # Sinh ra hành động và chuyển động của các vật thể
         print("\n------------------------------------------------------")
         print("Sinh ra hành động và chuyển động của các vật thể")
-        step3_respone = scene_plan_model.step3_generate(batch=[input_text], 
+        step3_respone = scene_plan_model.step3_generate(batch=input_text, 
                                                         objects_list=step1_respone[0], 
                                                         init_pos_ori=step2_respone[0],
                                                         mode="new")
@@ -150,7 +154,7 @@ if __name__ == '__main__':
     if (modify_step == 2):
         print("\n------------------------------------------------------")
         print("Xác định hướng và vị trí ban đầu của các vật thể")
-        step2_respone = scene_plan_model.step2_generate(batch=[input_text], 
+        step2_respone = scene_plan_model.step2_generate(batch=input_text, 
                                                         objects_list=step1_respone_previous, 
                                                         mode="modify",
                                                         feedback=modify_command,
@@ -173,10 +177,14 @@ if __name__ == '__main__':
         print("------------------------------------------------------")
         exec(step2_respone[0])   
 
+        # Update respone
+        input_text = scene_plan_model.updatePrompt(batch=input_text, 
+                                                   batchComand=[modify_command])
+
         # Sinh ra hành động và chuyển động của các vật thể
         print("\n------------------------------------------------------")
         print("Sinh ra hành động và chuyển động của các vật thể")
-        step3_respone = scene_plan_model.step3_generate(batch=[input_text], 
+        step3_respone = scene_plan_model.step3_generate(batch=input_text, 
                                                         objects_list=step1_respone_previous, 
                                                         init_pos_ori=step2_respone[0],
                                                         mode="new")
@@ -197,11 +205,12 @@ if __name__ == '__main__':
             step3_respone = json.load(openfile)
         print("------------------------------------------------------")
         exec(step3_respone[0]) 
+
     if (modify_step == 3):
             # Sinh ra hành động và chuyển động của các vật thể
         print("\n------------------------------------------------------")
         print("Sinh ra hành động và chuyển động của các vật thể")
-        step3_respone = scene_plan_model.step3_generate(batch=[input_text], 
+        step3_respone = scene_plan_model.step3_generate(batch=input_text, 
                                                         objects_list=step1_respone_previous, 
                                                         init_pos_ori=step2_respone_previous,
                                                         mode="modify",
@@ -224,11 +233,16 @@ if __name__ == '__main__':
             step3_respone = json.load(openfile)
         print("------------------------------------------------------")
         exec(step3_respone[0]) 
+
+        # Update respone
+        input_text = scene_plan_model.updatePrompt(batch=input_text, 
+                                                   batchComand=[modify_command])
+
     if (modify_step == 4):
         # Xác định các vật thể trong môi trường
         print("\n------------------------------------------------------")
         print("Xác định các vật thể trong môi trường")
-        step4_respone = scene_plan_model.step4_generate(batch=[input_text], 
+        step4_respone = scene_plan_model.step4_generate(batch=input_text, 
                                                         main_object=step1_respone_previous, 
                                                         mode="modify",
                                                         feedback=modify_command,
@@ -251,10 +265,14 @@ if __name__ == '__main__':
         print("------------------------------------------------------")
         exec(step4_respone[0]) 
 
+        # Update respone
+        input_text = scene_plan_model.updatePrompt(batch=input_text, 
+                                                   batchComand=[modify_command])
+
         # Xác định vị trí và các ràng buộc giữa các vật thể 
         print("\n------------------------------------------------------")
         print("Generate the motion script of the main objects.")
-        step5_respone = scene_plan_model.step5_generate(batch=[input_text], 
+        step5_respone = scene_plan_model.step5_generate(batch=input_text, 
                                                         object_list=step4_respone[0],
                                                         mode="new")
         print("Done!")
@@ -278,7 +296,7 @@ if __name__ == '__main__':
         # Xác định vị trí và các ràng buộc giữa các vật thể 
         print("\n------------------------------------------------------")
         print("Generate the motion script of the main objects.")
-        step5_respone = scene_plan_model.step5_generate(batch=[input_text], 
+        step5_respone = scene_plan_model.step5_generate(batch=input_text, 
                                                         object_list=step4_respone_previous,
                                                         mode="modify",
                                                         feedback=modify_command,
@@ -300,3 +318,7 @@ if __name__ == '__main__':
             step5_respone = json.load(openfile)
         print("------------------------------------------------------")
         exec(step5_respone[0]) 
+        
+        # Update respone
+        input_text = scene_plan_model.updatePrompt(batch=input_text, 
+                                                   batchComand=[modify_command])

@@ -119,6 +119,8 @@ Avoid using normal text; format your response strictly as specified above.
         return processed_batch
     
     def step1_preprocess_data_version_modify(self, batch, feedback, previous_answers):
+        print(feedback)
+        print(previous_answers)
         processed_batch = []
 
         step1_answer_format = """
@@ -132,7 +134,7 @@ Each asset is described with a concise name (x), but only include the specific o
 If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Cat1," "Cat2," "Cat3," and so on.        
 """
 
-        for sample, fb, previous_aws in (batch, feedback, previous_answers):
+        for sample in batch:
             processed_sample = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
 Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description from the list of object available below.
@@ -146,10 +148,10 @@ List of object available:
 
 Natural language description: "{sample}"    
 
-User Feedback: {fb}
+User Feedback: {feedback}
 
 Your previous answer: 
-{previous_aws}
+{previous_answers}
 
 After listing the assets, structure them in this format:
 {step1_answer_format}
@@ -256,7 +258,7 @@ init_pos_ori = [
 
 Ensure the coordinates and orientations reflect the described actions and positions of objects.
 """
-        for sample, fb, previous_aws in (batch, feedback, previous_answers):
+        for sample in batch:
             processed_sample = f"""
 You are an assistant for developing Blender scripts to create scenes based on natural descriptions.
 
@@ -270,10 +272,10 @@ Objects list:
 
 Natural language description: {sample}
 
-User Feedback: {fb}
+User Feedback: {feedback}
 
 Your previous answer: 
-{previous_aws}
+{previous_answers}
 
 After listing the assets, structure them in this format:
 {step2_answer_format}
@@ -413,7 +415,7 @@ trajectory = {
             - action: The specific action performed by the object during the motion.
 """
 
-        for sample, fb, previous_aws in (batch, feedback, previous_answers):
+        for sample in batch:
             processed_sample = f"""
 You are tasked with developing Blender scripts to create animation scenes based on natural language descriptions. Your goal is to script the animation sequences for the objects specified in the object list, using the provided natural language description and the initial positions and orientaions of object and the actions they could do.
 The trajectory of each object should be taken from the list of trajectory functions provided below.
@@ -438,10 +440,10 @@ Instructions:
 
 User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.        
 
-User Feedback: {fb}
+User Feedback: {feedback}
 
 Your previous answer: 
-{previous_aws}        
+{previous_answers}        
 
 Natural language description: {sample}
 
@@ -550,7 +552,7 @@ object_list = [
 ]    
 """
         
-        for sample, fb, previous_aws in (batch, feedback, previous_answers):
+        for sample in batch:
             processed_sample = f"""
 You are an assistant for developing Blender scripts to create scenes for various animation projects from natural language descriptions.
 
@@ -562,10 +564,10 @@ List of object available:
 
 User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.        
 
-User Feedback: {fb}
+User Feedback: {feedback}
 
 Your previous answer: 
-{previous_aws}            
+{previous_answers}            
 
 Natural language description: {sample}
 
@@ -766,7 +768,7 @@ Avoid using normal text; format your response strictly as specified above.
         processed_batch = []
 
         modify_answer_format = """
-change_step = [step1, step2, ...]
+change_step = [number_of_step1, number_of_step2, ...]
 """
         
         for sample in batch:
@@ -809,7 +811,7 @@ Avoid using normal text; format your response strictly as specified above
     def modify_crop_respone(self, batch):
         cropped_respone_batch = []
         for respone in batch:
-            temp1 = respone.split('\nRespone:', 1)[1]
+            temp1 = respone
             if ('change_step' in temp1):
                 temp2 = temp1.split('change_step', 1)[1]
                 temp3 = temp2.rsplit(']', 1)[0]
@@ -844,6 +846,39 @@ Avoid using normal text; format your response strictly as specified above
         respone = self.modify_crop_respone(respone)
         
         return respone
+
+    def preparePromptForUpdate(self, batch, batchComand):
+        promptedBatch = []
+        for item, command in zip(batch, batchComand):
+            prompt = f"""
+Describe a 3D scene in a single, continuous paragraph, incorporating all necessary details, including the setting, main objects, background elements, spatial layout, coordinates, constraints, and any object motions or interactions. Ensure the description flows naturally without using numbered sections or headers. Focus on providing a clear, vivid picture of the scene's overall look and feel, making it suitable for immediate translation into a 3D environment.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
+Your previous answer: {item}
+
+User input: {command} 
+
+Some information might conflict. Howerver, you should always priority what in User input
+"""            
+            prompt += "\nRespone:"
+            promptedBatch.append(prompt)
+        return promptedBatch
+    
+    def cropUpdatedPrompt(self, promptedBatch):
+        cropped_respone_batch = []
+        for respone in promptedBatch:
+            temp1 = respone.split('\nRespone:', 1)[1]
+            cropped_respone_batch.append(temp1)
+
+    def updatePrompt(self, batch, batchComand):
+        promptedBatch = self.preparePromptForUpdate(batch=batch, batchComand=batchComand)
+        
+        respone = asyncio.run(test_generate(promptedBatch))
+        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
+            respone = asyncio.run(test_generate(promptedBatch))
+        
+        # Crop output from response
+        croppedResponeBatch = self.cropUpdatedPrompt(promptedBatch=respone)
+        return croppedResponeBatch
 
 class VisionLangugeModel(nn.Module):
     def __init__(self):
@@ -1051,7 +1086,7 @@ Each asset is described with a concise name (x), but only include the specific o
 If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Cat1," "Cat2," "Cat3," and so on.        
 """
 
-        for sample, fb, previous_aws in (batch, feedback, previous_answers):
+        for sample in batch:
             processed_sample = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
 Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description from the list of object available below.
@@ -1065,10 +1100,10 @@ List of object available:
 
 Natural language description: "{sample}"    
 
-User Feedback: {fb}
+User Feedback: {feedback}
 
 Your previous answer: 
-{previous_aws}
+{previous_answers}
 
 After listing the assets, structure them in this format:
 {step1_answer_format}
@@ -1183,7 +1218,7 @@ init_pos_ori = [
 
 Ensure the coordinates and orientations reflect the described actions and positions of objects.
 """
-        for sample, fb, previous_aws in (batch, feedback, previous_answers):
+        for sample in batch:
             processed_sample = f"""
 You are an assistant for developing Blender scripts to create scenes based on natural descriptions.
 
@@ -1197,10 +1232,10 @@ Objects list:
 
 Natural language description: {sample}
 
-User Feedback: {fb}
+User Feedback: {feedback}
 
 Your previous answer: 
-{previous_aws}
+{previous_answers}
 
 After listing the assets, structure them in this format:
 {step2_answer_format}
@@ -1496,7 +1531,7 @@ object_list = [
 ]    
 """
         
-        for sample, fb, previous_aws in (batch, feedback, previous_answers):
+        for sample in batch:
             processed_sample = f"""
 You are an assistant for developing Blender scripts to create scenes for various animation projects from natural language descriptions.
 
@@ -1508,10 +1543,10 @@ List of object available:
 
 User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.        
 
-User Feedback: {fb}
+User Feedback: {feedback}
 
 Your previous answer: 
-{previous_aws}            
+{previous_answers}            
 
 Natural language description: {sample}
 
@@ -1635,7 +1670,7 @@ constraints = [(nameOfConstraint1, ("param1": "object1", ...)), ...]
 The answer should include 2 lists, initial_position and constraints, where initial_positions is a dictionary with keys as object names and values as their initial positions, and constraints is a list containing constraints between objects, each containing constraint functions taken from the above list of constraints and parameters being objects taken from the above list of objects.
 """
         
-        for sample, fb, previous_aws in (batch, feedback, previous_answers):
+        for sample in batch:
             processed_sample = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
 Your job is to suggest the initial position of objects and their constraints based on the objects list, the natural descriptions, the constraint list to create a suitable enviroment for scene described in the natural descriptions happen.
@@ -1646,10 +1681,10 @@ Objects list:
 
 User has recently provided some feedback on your previous answer. Your task this time is to adjust the response to meet the user's feedback.
 
-User Feedback: {fb}
+User Feedback: {feedback}
 
 Your previous answer: 
-{previous_aws}
+{previous_answers}
 
 Natural language description: {sample}
 
@@ -1732,7 +1767,7 @@ Avoid using normal text; format your response strictly as specified above.
         processed_batch = []
 
         modify_answer_format = """
-change_step = [step1, step2, ...]
+change_step = [number_of_step1, number_of_step2, ...]
 """
         
         for sample in batch:
@@ -1787,7 +1822,6 @@ Avoid using normal text; format your response strictly as specified above
                 print("respone: change_step = []")
         return cropped_respone_batch
 
-
     def modified_user_request(self, 
                               batch, 
                               step1_respone, 
@@ -1819,4 +1853,46 @@ Avoid using normal text; format your response strictly as specified above
         # Crop output from response
         respone = self.modify_crop_respone(respone)
         
-        return respone        
+        return respone
+
+    def preparePromptForUpdate(self, batch, batchComand):
+        promptedBatch = []
+        for item, command in zip(batch, batchComand):
+            prompt = f"""
+Describe a 3D scene in a single, continuous paragraph, incorporating all necessary details, including the setting, main objects, background elements, spatial layout, coordinates, constraints, and any object motions or interactions. Ensure the description flows naturally without using numbered sections or headers. Focus on providing a clear, vivid picture of the scene's overall look and feel, making it suitable for immediate translation into a 3D environment.
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
+Your previous answer: {item}
+
+User input: {command} 
+
+Some information might conflict. Howerver, you should always priority what in User input
+"""            
+            prompt += "\nRespone:"
+            promptedBatch.append(prompt)
+        return promptedBatch
+    
+    def cropUpdatedPrompt(self, promptedBatch):
+        cropped_respone_batch = []
+        for respone in promptedBatch:
+            temp1 = respone.split('\nRespone:', 1)[1]
+            cropped_respone_batch.append(temp1)
+
+    def updatePrompt(self, batch, batchComand):
+        promptedBatch = self.preparePromptForUpdate(batch=batch, batchComand=batchComand)
+        
+        # Tokenize the input prompt
+        inputs = self.tokenizer(promptedBatch, return_tensors="pt", padding=True)
+
+        # Move tensors to the appropriate device (e.g., GPU if available)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        # Generating
+        outputs = self.base_model.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+
+        # Decode the generated tokens back to text
+        respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
+        
+        # Crop output from response
+        croppedResponeBatch = self.cropUpdatedPrompt(promptedBatch=respone)
+        return croppedResponeBatch
