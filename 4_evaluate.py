@@ -46,7 +46,7 @@ def evaluate(scene_plan_model, text, index, dataType, modelType):
     print("\tDone!")
     print("\t------------------------------------------------------")
 
-    folderPath = f'./{modelType}/{dataType}/'
+    folderPath = f'/content/{modelType}/{dataType}/'
 
     # Check if parent folder
     if not os.path.exists(folderPath):
@@ -71,13 +71,13 @@ if __name__ == '__main__':
     
     print("Loading data...")
     if (dataType == "easy"):
-        with open('./', 'r') as file:
+        with open('/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/easy_samples.js', 'r') as file:
             data = json.load(file)
     elif (dataType == "medium"):
-        with open('./', 'r') as file:
+        with open('/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/medium_samples.js', 'r') as file:
             data = json.load(file)
     elif ((dataType == "hard")):
-        with open('./', 'r') as file:
+        with open('/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/hard_samples.js', 'r') as file:
             data = json.load(file)
     print(f"Total samples: {len(data)}")
 
