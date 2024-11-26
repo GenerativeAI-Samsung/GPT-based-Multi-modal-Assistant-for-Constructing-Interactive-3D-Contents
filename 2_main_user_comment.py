@@ -4,7 +4,6 @@ from LanguageModel import ScenePlanningModel, TestScenePlanningModel
 if __name__ == '__main__':  
 
     local_vars = {}
-
     print("------------------------------------------------------")
     print("Loading request...")
     with open('user_interact_result.json', 'r') as openfile:
