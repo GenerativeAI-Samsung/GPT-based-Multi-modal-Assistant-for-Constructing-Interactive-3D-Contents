@@ -67,6 +67,7 @@ def evaluate(scene_plan_model, text, index, dataType, modelType):
 
 if __name__ == '__main__':
     modelType = input("Model you want evaluate (GPT or Llama3)?")
+    print("-----------------------------------------------------")
     dataType = input("Type of samples (easy, medium or hard)?: ")
     
     print("Loading data...")
@@ -98,7 +99,7 @@ if __name__ == '__main__':
     indexStart = input("Index start: ")
     indexEnd = input("Index end: ")
 
-    for i in range(indexStart, indexEnd + 1):
+    for i in range(int(indexStart), int(indexEnd)):
          evaluate(scene_plan_model=scene_plan_model,
                   text=data[i],
                   index=i,
