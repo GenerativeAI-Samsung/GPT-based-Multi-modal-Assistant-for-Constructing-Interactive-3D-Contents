@@ -1126,6 +1126,7 @@ class ScenePlanningModel(nn.Module):
                  adapter_layer3=None,
                  adapter_layer4=None,
                  adapter_layer5=None):
+        super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID,
                                                        model_max_length=4096,
                                                        padding_side="right",
