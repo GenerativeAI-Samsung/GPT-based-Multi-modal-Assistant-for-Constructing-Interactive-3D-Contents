@@ -1127,7 +1127,7 @@ class ScenePlanningModel(nn.Module):
                  adapter_layer4=None,
                  adapter_layer5=None):
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID,
-                                                       model_max_length=1536,
+                                                       model_max_length=4096,
                                                        padding_side="right",
                                                        use_fast=False)
         self.base_model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
@@ -1194,13 +1194,18 @@ class ScenePlanningModel(nn.Module):
             special_tokens_dict["bos_token"] = default_bos_token
         if self.tokenizer.unk_token is None:
             special_tokens_dict["unk_token"] = default_unk_token
-    
+        
+        if special_tokens_dict:
+            num_added_tokens = self.tokenizer.add_special_tokens(special_tokens_dict)
+            return num_added_tokens
+        return 0 
     
     def smart_tokenizer_and_embedding(self):
         num_new_tokens = self.add_special_tokens()
-        self.base_model.resize_token_embeddings(len(self.tokenizer))
 
         if num_new_tokens > 0:
+            self.base_model.resize_token_embeddings(len(self.tokenizer))
+
             input_embeddings = self.base_model.get_input_embeddings().weight.data
             output_embeddings = self.base_model.get_output_embeddings().weight.data
 
@@ -1331,7 +1336,7 @@ Avoid using normal text; format your response strictly as specified above.
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         # Generating
-        outputs = self.step1_layer.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+        outputs = self.step1_layer.generate(**inputs, max_length=inputs["input_ids"].shape[1] + 1024, output_hidden_states=True, return_dict_in_generate=True)
 
         # Decode the generated tokens back to text
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -1464,7 +1469,7 @@ Avoid using normal text; format your response strictly as specified above.
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         # Generating
-        outputs = self.step2_layer.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+        outputs = self.step2_layer.generate(**inputs, max_length=inputs["input_ids"].shape[1] + 1024, output_hidden_states=True, return_dict_in_generate=True)
 
         # Decode the generated tokens back to text
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -1643,7 +1648,7 @@ Note: Avoid using normal text in your response; strictly adhere to the specified
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         # Generating
-        outputs = self.step3_layer.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+        outputs = self.step3_layer.generate(**inputs, max_length=inputs["input_ids"].shape[1] + 1024, output_hidden_states=True, return_dict_in_generate=True)
 
         # Decode the generated tokens back to text
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -1785,7 +1790,7 @@ Avoid using normal text; format your response strictly as specified above.
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         # Generating
-        outputs = self.step4_layer.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+        outputs = self.step4_layer.generate(**inputs, max_length=inputs["input_ids"].shape[1] + 1024, output_hidden_states=True, return_dict_in_generate=True)
 
         # Decode the generated tokens back to text
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -1927,7 +1932,7 @@ Avoid using normal text; format your response strictly as specified above.
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         # Generating
-        outputs = self.step5_layer.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+        outputs = self.step5_layer.generate(**inputs, max_length=inputs["input_ids"].shape[1] + 1024, output_hidden_states=True, return_dict_in_generate=True)
 
         # Decode the generated tokens back to text
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -2025,7 +2030,7 @@ Avoid using normal text; format your response strictly as specified above
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         # Generating
-        outputs = self.base_model.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+        outputs = self.base_model.generate(**inputs, max_length=inputs["input_ids"].shape[1] + 1024, output_hidden_states=True, return_dict_in_generate=True)
 
         # Decode the generated tokens back to text
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
@@ -2068,7 +2073,7 @@ Some information might conflict. Howerver, you should always priority what in Us
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         # Generating
-        outputs = self.base_model.generate(**inputs, max_length=1536, output_hidden_states=True, return_dict_in_generate=True)
+        outputs = self.base_model.generate(**inputs, max_length=inputs["input_ids"].shape[1] + 1024, output_hidden_states=True, return_dict_in_generate=True)
 
         # Decode the generated tokens back to text
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
