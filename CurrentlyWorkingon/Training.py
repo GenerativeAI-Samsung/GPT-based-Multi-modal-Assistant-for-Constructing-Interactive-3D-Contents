@@ -397,7 +397,7 @@ def exec_and_caculate_average(rewarding_score_text, cropped_respone_batch):
             temp_list.append(f"name: {reward_item['name']}, score: {reward_item['score']}, description: {reward_item['description']}\n")
         try:
             exec(res)
-            average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 1))
+            average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 5))
         except:
             average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.2))
         criticism.append(temp_list)
@@ -427,7 +427,7 @@ Your response should strictly adhere to the user's requirements and any previous
 List of object available:
 {list_object_avaible_name}
 
-Natural language description: "{batch[i]["respone"]}"    
+Natural language description: "{batch[i]["response"]}"    
     
 After listing the assets, structure them in this format:
 {step1_answer_format}
