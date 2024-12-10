@@ -123,9 +123,7 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
             respone_temp = response
         
         rewarding_prompt = f"""
-    You are an evaluator. Your task is to grade the response provided by the responder to the user's request based on specific criteria, using a 100-point scale.
-    We hope that Responder's answer provides as many detailed answers about each individual subject as possible, and we also appreciate the creativity of the responses. Therefore, even if the answers include subjects not mentioned in the user request, as long as they help make the scene more vivid and realistic, they are welcome
-    The criteria include:
+    You are an evaluation model assessing how well a response meets a specified user request. Evaluate the response based on defined criteria, using a 100-point scale.    The criteria include:
     {formatted_criteria}
     
     The responder's answer is formatted as:
@@ -323,10 +321,10 @@ def base_model_forward(inputs, base_mode):
         output = base_mode(**inputs)
     return output
 
-def exec_and_caculate_average(rewarding_score_text):
+def exec_and_caculate_average(rewarding_score_text, cropped_respone_batch):
     average_rewarding_score = []
     criticism = []
-    for item in rewarding_score_text:
+    for item, res in zip(rewarding_score_text, cropped_respone_batch):
         # Local variables
         local_vars = {}
         print(item)
@@ -337,7 +335,11 @@ def exec_and_caculate_average(rewarding_score_text):
             temp += reward_item['score']
             print(f"temp: {temp}")
             temp_list.append(f"name: {reward_item['name']}, score: {reward_item['score']}, description: {reward_item['description']}\n")
-        average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.2))
+        try:
+            exec(res)
+            average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 1))
+        except:
+            average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.2))
         criticism.append(temp_list)
     return average_rewarding_score, criticism
 
@@ -385,9 +387,11 @@ def caculate_loss_and_do_gradient_accumulation(tokenizer, model, base_model, bat
 
     # generate_rewarding_score
     rewarding_score_text = asyncio.run(generate_rewarding_score(rewarding_prompt=rewarding_prompt))
+    while ("Unusual activity" in str(rewarding_score_text[0])) or ("Request ended with status code 404" in str(rewarding_score_text[0])):
+        rewarding_score_text = asyncio.run(generate_rewarding_score(rewarding_prompt=rewarding_prompt))
 
     #exec_and_caculate_average
-    average_rewarding_score, criticism = exec_and_caculate_average(rewarding_score_text=rewarding_score_text)
+    average_rewarding_score, criticism = exec_and_caculate_average(rewarding_score_text=rewarding_score_text, cropped_respone_batch=cropped_batch)
     print(f"average_rewarding_score: {average_rewarding_score}")
     # -----------------------------------------------------------------------------
 
@@ -564,9 +568,10 @@ def test(tokenizer,
             
             # Tracking answer_format_correctness
             for item in cropped_batch:
-                if item == "object_list = []":
+                try:
+                    exec(item)
                     answer_format_correctness.append(0.0)
-                else:
+                except:
                     answer_format_correctness.append(1.0)
 
             # craft_rewarding_prompt
@@ -574,6 +579,9 @@ def test(tokenizer,
 
             # generate_rewarding_score
             rewarding_score_text = asyncio.run(generate_rewarding_score(rewarding_prompt=rewarding_prompt))
+
+            while ("Unusual activity" in str(rewarding_score_text[0])) or ("Request ended with status code 404" in str(rewarding_score_text[0])):
+                rewarding_score_text = asyncio.run(generate_rewarding_score(rewarding_prompt=rewarding_prompt))
 
             #exec_and_caculate_average_score
             for item in rewarding_score_text:
@@ -614,13 +622,11 @@ if __name__ == '__main__':
 
     step1_criteria = [
     {'name': 'Relevance',
-        'description': 'Do the elements chosen align with the scene’s goals and requirements?'},
-    {'name': 'Creativity',
-        'description': 'Does the response bring creative and novel ideas that enhance the scene?'},
-    {'name': 'Comprehensive Identification',
-        'description': 'Does the response clearly identify and detail the environment, main characters, animals, sounds, lighting, camera angles and layout?'},
-    {'name': 'Clarity and Brevity',
-        'description': 'Are the descriptions concise, clear, and easy for the user to quickly understand?'},
+        'description': 'How closely the response aligns with the user\'s request.'},
+    {'name': 'Completeness',
+        'description': 'The extent to which the response covers all requested aspects.'},
+    {'name': 'Accuracy',
+        'description': 'The correctness of details provided in the response.'},
 ]
 
     # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
