@@ -155,7 +155,8 @@ Avoid using normal text; format your response strictly as specified above.
         processed_batch.append(processed_sample)
     
     return {"processed_batch": processed_batch, 
-            "answer_format": step1_answer_format}
+            "answer_format": step1_answer_format,
+            "unProcessed_batch": sample}
 
 def step1_crop_respone(batch):
     cropped_respone_batch = []
@@ -175,7 +176,7 @@ def step1_crop_respone(batch):
 def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_criterias):
     rewarding_prompts = []
     formatted_criteria = "".join(f"\t-{item['name']}: {item['description']}\n" for item in scoring_criterias)
-    for prompt, response in zip(processed_batch["processed_batch"], cropped_respone_batch):
+    for prompt, response in zip(processed_batch["unProcessed_batch"], cropped_respone_batch):
         
         if ('{"name": x1, "description": y1}' in response):
             respone_temp = "object_list = []"
@@ -186,6 +187,9 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
     You are an evaluation model assessing how well a response meets a specified user request. Evaluate the response based on defined criteria, using a 100-point scale.    The criteria include:
     {formatted_criteria}
     
+    User request: Identify and list the main assets that are explicitly mentioned and are essential objects in the description from the list of object available below.
+    {list_object_avaible_name}
+
     The responder's answer is formatted as:
     {processed_batch["answer_format"]}
 
@@ -198,6 +202,7 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
                         {{"name": criteria2, "score": score2, "description": description2}},
                         ...]
 
+                        
     Avoid using normal text; format your response strictly as specified above.
     -------------------------------------------------------------------------
     REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
@@ -707,10 +712,10 @@ if __name__ == '__main__':
     step1_criteria = [
     {'name': 'Relevance',
         'description': 'How closely the response aligns with the user\'s request.'},
-    {'name': 'Completeness',
-        'description': 'The extent to which the response covers all requested aspects.'},
     {'name': 'Accuracy',
         'description': 'The correctness of details provided in the response.'},
+    {'name': 'Efficiency', 
+        'description': 'The response\'s ability to present relevant data concisely, avoiding unnecessary repetition.'},
 ]
 
     # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
@@ -732,7 +737,7 @@ if __name__ == '__main__':
         # Loading tokenizer
         tokenizer = AutoTokenizer.from_pretrained(
             MODEL_ID,
-            model_max_length=1536,
+            model_max_length=2048,
             padding_side="right",
             use_fast=False)
     
