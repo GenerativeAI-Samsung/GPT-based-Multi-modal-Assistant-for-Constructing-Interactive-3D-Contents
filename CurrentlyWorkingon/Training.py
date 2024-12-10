@@ -14,6 +14,61 @@ import random
 import gc
 import json
 
+list_object_avaible = [
+    {"name": "Cat", "action": ["jump", "run", "sit", "walk"]},
+    {"name": "Gull", "action": ["fly"]},
+    {"name": "Duck", "action": ["swim", "jump", "run", "walk"]},
+    # -------------------------------------------------------------------
+    {"name": "Human", "action": ["swim", "jump", "run", "walk", "stand"]},
+    {"name": "Wolf", "action": ["swim", "jump", "run", "walk", "stand"]},
+    {"name": "Deer", "action": ["jump", "run", "walk", "stand"]},
+    {"name": "Horse", "action": ["jump", "run", "walk"]},
+    {"name": "Fish", "action": ["swim"]},
+    {"name": "Frog", "action": ["jump", "swim"]},
+    {"name": "Bird", "action": ["fly", "jump", "walk"]},
+    {"name": "Elephant", "action": ["walk", "stand"]},
+    {"name": "Rabbit", "action": ["jump", "run", "sit"]},
+    {"name": "Kangaroo", "action": ["jump", "stand", "walk"]},
+    {"name": "Penguin", "action": ["swim", "walk", "stand"]},
+    {"name": "Snake", "action": ["crawl"]},
+    {"name": "Cheetah", "action": ["run", "walk", "stand"]},
+    {"name": "Turtle", "action": ["walk", "swim"]},
+    {"name": "Bat", "action": ["fly", "crawl"]},
+    {"name": "Dog", "action": ["jump", "run", "sit", "walk", "stand"]},
+    {"name": "Lion", "action": ["jump", "run", "walk", "stand"]},
+    {"name": "Zebra", "action": ["run", "walk", "stand"]},
+    {"name": "Panda", "action": ["sit", "walk", "stand"]},
+    {"name": "Crocodile", "action": ["swim", "walk", "crawl"]},
+    {"name": "Dolphin", "action": ["swim", "jump"]},
+    {"name": "Eagle", "action": ["fly", "jump"]},
+    {"name": "Chimpanzee", "action": ["jump", "run", "walk", "sit"]},
+    {"name": "Peacock", "action": ["fly", "walk", "stand"]},
+    {"name": "Lizard", "action": ["crawl", "jump", "stand"]},
+    {"name": "Goat", "action": ["jump", "run", "walk", "stand"]},
+    {"name": "Whale", "action": ["swim", "dive"]},
+    {"name": "Hawk", "action": ["fly", "jump", "stand"]},
+    {"name": "Swan", "action": ["swim", "fly", "walk"]},
+    {"name": "Antelope", "action": ["jump", "run", "walk"]},
+    {"name": "Leopard", "action": ["jump", "run", "walk", "stand"]},
+    {"name": "Seal", "action": ["swim", "crawl", "stand"]},
+    {"name": "Raccoon", "action": ["crawl", "jump", "walk"]},
+    {"name": "Flamingo", "action": ["stand", "walk", "fly"]},
+    {"name": "Otter", "action": ["swim", "jump", "run"]},
+    {"name": "Fox", "action": ["jump", "run", "walk", "stand"]},
+    {"name": "Polar Bear", "action": ["swim", "walk", "stand"]},
+    {"name": "Koala", "action": ["climb", "sit", "stand"]},
+    {"name": "Parrot", "action": ["fly", "walk", "stand"]},
+    {"name": "Buffalo", "action": ["run", "walk", "stand"]},
+    {"name": "Shark", "action": ["swim"]},
+    {"name": "Octopus", "action": ["crawl", "swim"]},
+    {"name": "Crab", "action": ["crawl", "walk", "stand"]},
+    {"name": "Moose", "action": ["run", "walk", "stand"]},
+    {"name": "Falcon", "action": ["fly", "dive"]},
+    {"name": "Porcupine", "action": ["crawl", "walk", "stand"]}
+]
+
+list_object_avaible_name =[obj["name"] for obj in list_object_avaible]
+
 def smart_tokenizer_and_embedding_resize_base_model(
     special_tokens_dict: Dict,
     tokenizer: transformers.PreTrainedTokenizer,
@@ -65,32 +120,37 @@ def step1_preprocess_data(batch):
 
     step1_answer_format = """
 object_list = [
-  {"name": x1, "description": y1},
-  {"name": x2, "description": y2},
-  {"name": x3, "description": y3},
-  ...
+{"name": obj1},
+{"name": obj2}
+...
 ]
-Each asset is described with a concise name (x) and a detailed visual description (y).
-Asset should be about the environment, main characters, animals, sounds, lighting, camera angles and layout
+
+Each asset is described with a concise name (x), but only include the specific objects mentioned. Avoid including general scene elements (e.g., sky, ground, trajectories). 
+If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Cat1," "Cat2," "Cat3," and so on.    
 """
     for sample in batch:
         processed_sample = f"""
-    You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-    Your job is to list the assets individually, ensuring each is a single unit (avoiding composite sets). 
+You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
+Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description from the list of object available below.
 
-    Natural language description: "{sample['query']}"    
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
+
+List of object available:
+{list_object_avaible_name}
+
+Natural language description: "{sample}"    
     
-    After listing the assets, structure them in this format:
-    {step1_answer_format}
+After listing the assets, structure them in this format:
+{step1_answer_format}
 
-    Avoid using normal text; format your response strictly as specified above.
+Avoid using normal text; format your response strictly as specified above.
     """
         processed_sample += f"""
     -------------------------------------------------------------------------
     REMEMBER TO ADVOID USING NORMAL AND STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
     {step1_answer_format}
     ------------------------------------------------------------------------
-"""
+    """
         processed_sample += "\nRespone:"
         processed_batch.append(processed_sample)
     
@@ -293,7 +353,7 @@ def split_into_chunks(tokenizer, model_response_batch, base_model_respose_batch,
         chunks_batch.append(result)
     return chunks_batch
 
-def split_into_chunks_v2(tokenizer, model_response_batch, length=500):
+def split_into_chunks_v2(tokenizer, model_response_batch, length=400):
     chunks_batch = []
     for model_respone in model_response_batch:
         inputs = tokenizer(model_respone, return_tensors="pt", padding=True)
@@ -345,17 +405,41 @@ def exec_and_caculate_average(rewarding_score_text, cropped_respone_batch):
 
 def train_prompt(splitted_model_respones, batch, criticism):
     output = []
-    for i, respone in enumerate(splitted_model_respones):
-        prompt = f"""
-Develop Blender scripts for animation by analyzing natural scene descriptions, breaking them into individual assets like objects, characters, and props, each with a distinct name and detailed visual description, ensuring no composite sets.
-Script: {batch[i]["query"]}
+    step1_answer_format = """
+object_list = [
+{"name": obj1},
+{"name": obj2}
+...
+]
 
-Response:
+Each asset is described with a concise name (x), but only include the specific objects mentioned. Avoid including general scene elements (e.g., sky, ground, trajectories). 
+If an object appears multiple times in a scene, you can differentiate each instance by naming them sequentially, like "Cat1," "Cat2," "Cat3," and so on.    
+"""
+
+    for i, respone in enumerate(splitted_model_respones):
+        
+        prompt = f"""
+You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
+Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description from the list of object available below.
+
+Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
+
+List of object available:
+{list_object_avaible_name}
+
+Natural language description: "{batch[i]["respone"]}"    
+    
+After listing the assets, structure them in this format:
+{step1_answer_format}
+
+Avoid using normal text; format your response strictly as specified above.
+
+Your Response:
 {respone}
 
 Criticism:
 {''.join(x for x in criticism[i])}
-    """
+"""
         print(f"train_prompt: {prompt}")
         output.append(prompt)
     return output
@@ -616,7 +700,7 @@ if __name__ == '__main__':
     DEFAULT_BOS_TOKEN = "<s>"
     DEFAULT_UNK_TOKEN = "<unk>"
 
-    TRAIN_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/train_examples.json'
+    TRAIN_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/train_examples2.json'
     TEST_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/test_examples.json'
     EVALUATE_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/evaluate_examples.json'
 
