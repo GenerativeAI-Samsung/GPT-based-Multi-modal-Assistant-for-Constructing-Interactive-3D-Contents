@@ -117,6 +117,7 @@ def smart_tokenizer_and_embedding_resize(
 
 def step1_preprocess_data(batch):
     processed_batch = []
+    unProcessed_batch = []
 
     step1_answer_format = """
 object_list = [
@@ -138,7 +139,7 @@ Your response should strictly adhere to the user's requirements and any previous
 List of object available:
 {list_object_avaible_name}
 
-Natural language description: "{sample}"    
+Natural language description: "{sample['response']}"    
     
 After listing the assets, structure them in this format:
 {step1_answer_format}
@@ -153,11 +154,12 @@ Avoid using normal text; format your response strictly as specified above.
     """
         processed_sample += "\nRespone:"
         processed_batch.append(processed_sample)
+        unProcessed_batch.append(sample['response'])
         print(processed_batch)
     
     return {"processed_batch": processed_batch, 
             "answer_format": step1_answer_format,
-            "unProcessed_batch": sample}
+            "unProcessed_batch": unProcessed_batch}
 
 def step1_crop_respone(batch):
     cropped_respone_batch = []
