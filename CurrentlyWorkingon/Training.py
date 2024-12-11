@@ -216,10 +216,22 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
 
 async def generate_rewarding_score(rewarding_prompt):
     async def process_api_request(request, index):
+        constRequest = request
+        warning = request + """
+        -------------------------------------------------------------------------
+        YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
+        REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+        rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
+                            {{"name": criteria2, "score": score2, "description": description2}},
+                            ...]
+        ------------------------------------------------------------------------
+        """
+
         while True:
             try:
                 await asyncio.sleep(random.randint(10, 20))
                 print(f"Started API request of index: {index}.")
+                print(request)
                 response = await g4f.ChatCompletion.create_async(
                     model="gpt-4o-mini",
                     messages=[{"role": "user", "content": request}],
@@ -234,16 +246,7 @@ async def generate_rewarding_score(rewarding_prompt):
                     print(f"Completed API request of index: {index}")
                     return response
                 except:
-                    warining = """
-        -------------------------------------------------------------------------
-        YOUR PREVIOUS ANSWER DID NOT REPSONE IN RIGHT FORMAT!
-        REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
-        rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
-                            {{"name": criteria2, "score": score2, "description": description2}},
-                            ...]
-        ------------------------------------------------------------------------
-        """
-                    request = request + warining
+                    request = warning
                     continue
 
             except Exception as e:
@@ -432,7 +435,7 @@ Your response should strictly adhere to the user's requirements and any previous
 List of object available:
 {list_object_avaible_name}
 
-Natural language description: "{batch[i]["response"]}"    
+Description: "{batch[i]["response"]}"    
     
 After listing the assets, structure them in this format:
 {step1_answer_format}
