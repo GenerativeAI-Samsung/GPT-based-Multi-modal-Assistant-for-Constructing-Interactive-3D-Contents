@@ -153,6 +153,7 @@ Avoid using normal text; format your response strictly as specified above.
     """
         processed_sample += "\nRespone:"
         processed_batch.append(processed_sample)
+        print(processed_batch)
     
     return {"processed_batch": processed_batch, 
             "answer_format": step1_answer_format,
@@ -193,7 +194,7 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
     The responder's answer is formatted as:
     {processed_batch["answer_format"]}
 
-    User's request: "{prompt}"
+    Description: "{prompt}"
 
     Responder's answer: "{respone_temp}"
 
@@ -714,7 +715,7 @@ if __name__ == '__main__':
 
     step1_criteria = [
     {'name': 'Correctness',
-        'description': 'Does the object list list all living creatures in the description? (for example, if there are 2 cats in the description, the list should list cat 1 and cat 2. If there is a group of cats in the description, there should be a group of cats listed)'},
+        'description': 'Does the object list list all living creatures in the description?'},
     {'name': 'Relevence',
         'description': 'Are the listed objects included in the list of available objects?'},
     {'name': 'Efficient',
