@@ -131,7 +131,7 @@ If an object appears multiple times in a scene, you can differentiate each insta
     for sample in batch:
         processed_sample = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description from the list of object available below.
+Your task is to identify and list the main assets that are explicitly mentioned and are living creatures in the description from the list of object available below.
 
 Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
@@ -402,7 +402,7 @@ def exec_and_caculate_average(rewarding_score_text, cropped_respone_batch):
             temp_list.append(f"name: {reward_item['name']}, score: {reward_item['score']}, description: {reward_item['description']}\n")
         try:
             exec(res)
-            average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 5))
+            average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 3))
         except:
             average_rewarding_score.append(torch.tensor(temp / (10 * len(local_vars['rewarding_score'])) + 0.2))
         criticism.append(temp_list)
@@ -425,7 +425,7 @@ If an object appears multiple times in a scene, you can differentiate each insta
         
         prompt = f"""
 You are an assistant for developing multiple Blender scripts to create scenes for diverse animation projects from natural description. 
-Your task is to identify and list the main assets that are explicitly mentioned and are essential objects in the description from the list of object available below.
+Your task is to identify and list the main assets that are explicitly mentioned and are living creatures in the description from the list of object available below.
 
 Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
 
@@ -710,12 +710,12 @@ if __name__ == '__main__':
     EVALUATE_DATA_PATH = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/evaluate_examples.json'
 
     step1_criteria = [
-    {'name': 'Relevance',
-        'description': 'How closely the response aligns with the user\'s request.'},
-    {'name': 'Accuracy',
-        'description': 'The correctness of details provided in the response.'},
-    {'name': 'Efficiency', 
-        'description': 'The response\'s ability to present relevant data concisely, avoiding unnecessary repetition.'},
+    {'name': 'Correctness',
+        'description': 'Does the object list list all living creatures in the description? (for example, if there are 2 cats in the description, the list should list cat 1 and cat 2. If there is a group of cats in the description, there should be a group of cats listed)'},
+    {'name': 'Relevence',
+        'description': 'Are the listed objects included in the list of available objects?'},
+    {'name': 'Efficient',
+        'description': 'The items in the list should be short and to the point, not meaninglessly repeated.'}
 ]
 
     # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
