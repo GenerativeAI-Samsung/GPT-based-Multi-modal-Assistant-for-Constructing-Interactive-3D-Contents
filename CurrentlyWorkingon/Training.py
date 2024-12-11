@@ -172,8 +172,8 @@ def step1_crop_respone(batch):
             print(f"respone: {temp}")
             cropped_respone_batch.append(temp)
         else:
-            cropped_respone_batch.append("object_list = [")
-            print(f"respone: object_list = [")
+            cropped_respone_batch.append("object_list = []")
+            print(f"respone: object_list = []")
     return cropped_respone_batch
 
 def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_criterias):
