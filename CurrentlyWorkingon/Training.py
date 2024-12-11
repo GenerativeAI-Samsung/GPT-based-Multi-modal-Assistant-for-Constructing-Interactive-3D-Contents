@@ -172,8 +172,8 @@ def step1_crop_respone(batch):
             print(f"respone: {temp}")
             cropped_respone_batch.append(temp)
         else:
-            cropped_respone_batch.append("object_list = []")
-            print(f"respone: object_list = []")
+            cropped_respone_batch.append("object_list = [")
+            print(f"respone: object_list = [")
     return cropped_respone_batch
 
 def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_criterias):
@@ -182,7 +182,7 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
     for prompt, response in zip(processed_batch["unProcessed_batch"], cropped_respone_batch):
         
         if ('{"name": x1, "description": y1}' in response):
-            respone_temp = "object_list = []"
+            respone_temp = "object_list = ["
         else:
             respone_temp = response
         
@@ -270,7 +270,10 @@ def model_generate(model, tokenizer, processed_batch, max_sequence_length=1536):
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     # Generating
-    outputs = model.generate(**inputs, max_length=max_sequence_length, output_hidden_states=True, return_dict_in_generate=True)
+    try:
+        outputs = model.generate(**inputs, max_length=max_sequence_length, output_hidden_states=True, return_dict_in_generate=True)
+    except:
+        outputs = model.generate(**inputs, max_length=2048, output_hidden_states=True, return_dict_in_generate=True)
 
     # Decode the generated tokens back to text
     model_responses = [tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
