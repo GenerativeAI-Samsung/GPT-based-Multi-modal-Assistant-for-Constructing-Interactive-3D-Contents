@@ -721,13 +721,13 @@ if __name__ == '__main__':
 
     step1_criteria = [
     {'name': 'Correctness',
-        'description': 'Does the object list list all living creatures in the description?'},
+        'description': 'Does the object list list all living creatures in the description? (if the response is (  1  2  3  4  5  6  7 ), the score should be 0)'},
     {'name': 'Relevence',
-        'description': 'Are the listed objects included in the list of available objects?'},
+        'description': 'Are the listed objects included in the list of available objects? (if the response is (  1  2  3  4  5  6  7 ), the score should be 0)'},
     {'name': 'Efficient',
-        'description': 'The items in the list should be short and to the point, not meaninglessly repeated.'},
+        'description': 'The items in the list should be short and to the point, not meaninglessly repeated. (if the response is (  1  2  3  4  5  6  7 ), the score should be 0)'},
     {'name': 'Right Format',
-        'description': f'Does the response strictly follow the specified answer format, without adding any normal text or explanations?'}
+        'description': f'Does the response strictly follow the specified answer format, without adding any normal text or explanations? (if the response is (  1  2  3  4  5  6  7 ), the score should be 0)'}
 ]
 
     # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
