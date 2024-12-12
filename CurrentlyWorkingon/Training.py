@@ -208,6 +208,10 @@ def craft_rewarding_prompt(processed_batch, cropped_respone_batch, scoring_crite
 
                         
     Avoid using normal text; format your response strictly as specified above.
+    Remember that the score is on the scale of 100.
+    If the responder\'s answer is partly correct, you should give him some score for that! The score should be proportion of the number of object correctly listed with the number of irrelevant objects.
+    If the responder\'s answer is (  1  2  3  4  5  6  7 ), the score should be 0.
+    If the responder\'s answer is (Expected, 100% correct, 5.0/5.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0), the score should be 0.
     -------------------------------------------------------------------------
     REMEMBER TO STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
     rewarding_score = [{{"name": criteria1, "score": score1, "description": description1}}, 
@@ -721,13 +725,13 @@ if __name__ == '__main__':
 
     step1_criteria = [
     {'name': 'Correctness',
-        'description': 'Does the object list list all living creatures in the description? (if the response is (  1  2  3  4  5  6  7 ), the score should be 0)'},
+        'description': 'Does the object list list all living creatures in the description? '},
     {'name': 'Relevence',
-        'description': 'Are the listed objects included in the list of available objects? (if the response is (  1  2  3  4  5  6  7 ), the score should be 0)'},
+        'description': 'Are the listed objects included in the list of available objects?'},
     {'name': 'Efficient',
-        'description': 'The items in the list should be short and to the point, not meaninglessly repeated. (if the response is (  1  2  3  4  5  6  7 ), the score should be 0)'},
+        'description': 'The items in the list should be short and to the point, not meaninglessly repeated.'},
     {'name': 'Right Format',
-        'description': f'Does the response strictly follow the specified answer format, without adding any normal text or explanations? (if the response is (  1  2  3  4  5  6  7 ), the score should be 0)'}
+        'description': f'Does the response strictly follow the specified answer format, without adding any normal text or explanations?'}
 ]
 
     # Loading model with setting (Default: Meta-Llama-3-8B-4bit-64rank)
@@ -837,7 +841,7 @@ if __name__ == '__main__':
             train_data_path=TRAIN_DATA_PATH,
             num_epoch=1,
             batch_size=1,
-            learning_rate=8e-5,
+            learning_rate=2e-4,
             shuffle=True,
             start_index=int(start_index),
             end_index=int(end_index))
