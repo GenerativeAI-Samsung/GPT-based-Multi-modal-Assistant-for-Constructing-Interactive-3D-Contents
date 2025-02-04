@@ -4,20 +4,11 @@ import json
 
 if __name__ == '__main__':
 
-# Kịch bản thử nghiệm 
-# Đầu vào hệ thống gồm 3 phần:
-#   - User Query: Chứa phần nội dung tương tác chính của người dùng tới mô hình ngôn ngữ
-#   - External Text Resource: Chứa phần nội dung text thông tin người dùng muốn mô hình dựa vào để trả lời
-#   - External Image Resource: Chứa hình ảnh, kèm discription, mà người dùng muốn thêm vào 
-# -----------------------------------------------------------------------------
-    # User Query
     input_text = input("Please provide your command: ")
 
-    # External Text Resource
     external_texts = input("Please provide external text: ")
 
     external_images = []
-    # External Image Resource 
     print("Please provide image path and description")
     control = None
     while (control != 'done'):
@@ -29,40 +20,25 @@ if __name__ == '__main__':
                "questions_response": None})
         control = input("Are you done yet? (press 'done' if done, else press 'no'): ")
 
-# -----------------------------------------------------------------------------
-
-    model_choice = input("Which model you want to use? (1 - GPT api, 2 - Llam3 8B): ")
     MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
-# Khởi tạo Llama3-8B-Quantization
-    if (int(model_choice) == 1):
-        print("------------------------------------------------------")
-        print("Initialize GPT api...")
-        user_interact_model = TestUserInteractModel()
-        print("Done!")
-        print("------------------------------------------------------")
-    elif (int(model_choice) == 2):
-        print("------------------------------------------------------")
-        print("Initialize LoftQ/Meta-Llama-3-8B-4bit-64rank...")
-        user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
-        print("Done!")
-        print("------------------------------------------------------")
 
-# Đối với External Text Resource, trựa tiếp đưa vào list các documents_augement
+    print("------------------------------------------------------")
+    print("Initialize LoftQ/Meta-Llama-3-8B-4bit-64rank...")
+    user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
+    print("Done!")
+    print("------------------------------------------------------")
+
     documents_augement = [external_texts]
     
-# Đối với External Image Resource, mô hình ngôn ngữ chính sẽ đặt một số các câu hỏi liên quan đến các hình ảnh dựa vào: User query, Images_discription
     print("\n------------------------------------------------------")
     print('User Interact Model is asking questions about image...')
-    # Prompt để mô hình ngôn ngữ chính đặt câu hỏi
     question_asked = []
     for i, image in enumerate(external_images):
         prompt = f"""
 You are an assistant that helps answer user requests.
 The user provides you with some pictures, and you have to respond to their request based on those pictures.
 However, you do not have direct access to the pictures. The only way to approach them is by asking questions related to the pictures to gather the necessary information.
-Your task is to create questions based on the user's request and the description about the image to extract the needed information to fulfill the user's request.
-
-Request: "{input_text}"
+Your task is to create questions based on the description about the image to extract the needed information to fulfill the user's request.
 
 Description: "{image["image_description"]}"
 
@@ -71,7 +47,7 @@ external_images[{i}]["image_questions"] = [question1, question2, ...]
 
 Avoid using normal text; format your response strictly as specified above.
 """ 
-        
+
         respone = user_interact_model.generate(batch=[prompt])
         while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
             respone = user_interact_model.generate(batch=[prompt])
@@ -81,7 +57,6 @@ Avoid using normal text; format your response strictly as specified above.
     print("------------------------------------------------------")
 
     print("\n------------------------------------------------------")
-    # Viết ra file .json và yêu cầu người dùng check lại
     json_object = json.dumps(question_asked, indent=4)
     with open("question_asked.json", "w") as outfile:
         outfile.write(json_object)
@@ -90,16 +65,13 @@ Avoid using normal text; format your response strictly as specified above.
     while (control != 'continue'):
         control = input('Press "continue" if done: ')
     
-    # Đọc lại file .json để đến bước tiếp theo
     with open('question_asked.json', 'r') as openfile:
         question_asked = json.load(openfile)
     print("------------------------------------------------------")
 
-    # Thực thi các câu hỏi đó
     for item in question_asked:
         exec(item["respone"])
 
-    # Các câu hỏi vừa xong tiếp đến sẽ được mô hình Vision_LM trả lời
     print("------------------------------------------------------")
     print("Initialize MC-LLaVA-3b...")
     Vision_LM = VisionLangugeModel()
@@ -113,7 +85,6 @@ Avoid using normal text; format your response strictly as specified above.
     for i, image in enumerate(external_images):
         temp_list = []
         for question in image["image_questions"]:
-            # Prompt cho mô hình Vision Language trả lời, dựa vào: Hình ảnh, Image description, Image Question
             prompt = f"""
 Based on the image and the description of the picture below, please answer the following questions related to the image
 Some question may not relevant to the image and description. In that case, you should answer "Unknown"
@@ -125,7 +96,6 @@ Question: {question}
         answers.append(temp_list)
     
     print("\n------------------------------------------------------")
-    # Viết ra file .json và yêu cầu người dùng check lại
     json_object = json.dumps(answers, indent=4)
     with open("answers.json", "w") as outfile:
         outfile.write(json_object)
@@ -134,22 +104,18 @@ Question: {question}
     while (control != 'continue'):
         control = input('Press "continue" if done: ')
     
-    # Đọc lại file .json để đến bước tiếp theo
     with open('answers.json', 'r') as openfile:
         answers = json.load(openfile)
     print("------------------------------------------------------")
 
-    # Cập nhập câu trả lời vào external_images
     for i, image in enumerate(external_images):
         image["questions_response"] = [item["respone"] for item in answers[i]]
 
-    # Các câu hỏi và câu trả lời của mô hình ngôn ngữ sẽ được đưa vào list các documents_augement để về sau mô hình ngôn ngữ truy vấn
     for image in external_images:
         documents_augement.extend(respone  for respone in image["questions_response"])
 
     print(documents_augement)
 
-    # Khởi tạo RAG module
     print("\n------------------------------------------------------")
     print("Initialize RAG Module") 
     Retrieval_module = RAG_module()
@@ -163,19 +129,26 @@ Question: {question}
     respone = ""
     while (input_text != 'done'):
 
-        # Thực hiện việc truy xuất thông tin từ RAG module (Top 20)
         output_RAG = Retrieval_module.find_top_k_embedding(query=input_text, k=20)
         combine_item = ''.join((item + "\n") for item in output_RAG)
-        # Sau đó, prompt để mô hình ngôn ngữ trả lời dựa trên thông tin được lựa từ output_RAG
         
         prompt = f"""
-Describe a 3D scene in a single, continuous paragraph, incorporating all necessary details, including the setting, main objects, background elements, spatial layout, coordinates, constraints, and any object motions or interactions. Ensure the description flows naturally without using numbered sections or headers. Focus on providing a clear, vivid picture of the scene's overall look and feel, making it suitable for immediate translation into a 3D environment.
-Your response should strictly adhere to the user's requirements and any previous answer provided (if applicable).
-Your previous answer: {respone}
-
-User input: {input_text} 
-
-"""
+Describe a 3D scene in a single, continuous paragraph. The description must include:
+    1.Location: Where the scene takes place.
+    2.Initial Placement of Objects: The starting position of all necessary objects in the scene.
+    3.Object Movements: Movements taken from the following list, ensuring each movement includes the required parameters:
+        1. zigZag: Parameters include starting and ending coordinates.
+        2. standStill: No parameters.
+        3. runStraight: Parameters include starting and ending coordinates.
+        4. ellipse: Parameters include starting coordinates, center coordinates, major axis length, and minor axis length.
+        5. jump: Parameters include starting coordinates, peak coordinates, and ending coordinates.
+        6. Linear Bézier Curve: Parameters include two points (P0 and P1).
+        7. Quadratic Bézier Curve: Parameters include three points (P0, P1, P2).
+        8. Cubic Bézier Curve: Parameters include four points (P0, P1, P2, P3).
+    4. Frame Range: The starting and ending frame for each object's motion.
+Ensure the description flows naturally and avoids numbered sections or headers. It must integrate all required details seamlessly. Below is an example of an expected response:
+"The scene unfolds in a playground. A bicycle1 moves along a linear Bézier curve, starting at (3.62, 5.26, 18.24) and transitioning to (20.34, -27.23, 20.94), creating a simple path between frame 150 and frame 181. Meanwhile, giraffe1 runs straight along a path from (16.5, 21.26, -15.67) to (-32.88, 20.21, -4.08), quickly and steadily over frames 53 to 82. At the same time, giraffe1 jumps in a winding motion, bursting from (-8.93, -14.32, 25.71), accelerating toward (9.71, -2.13, 27.2) from frames 84 to 167. Horse1 jumps calmly and steadily, remaining poised in place without motion between frames 43 and 130, while giraffe1 stands still following a snaking course, starting at (-27.22, -18.32, 5.72) and darting toward (29.08, -10.61, 11.8) between frames 70 and 98."
+Ensure your response strictly adheres to this format and incorporates all required details."""
         if (initialPrompt == False):
             prompt += f"""
 Additionally, there is some supplementary information that will help you respond more accurately to the user's needs:
@@ -197,12 +170,6 @@ Some information might conflict. Howerver, you should always priority what in Us
 
         input_text = input("Do you have any further modification (press 'done' if no, press 'yes' if yes): ") 
 
-    # lưu lại các embedding vector thành file .json
-    # json_object = json.dumps(Retrieval_module.embedding_dicts)
-    # with open("/content/embedding_dicts.json", "w") as outfile:
-    #     outfile.write(json_object)
-    
-    # Lưu câu trả lời lại để sử dụng cho phần sau
     json_object = json.dumps({"user_interact_result": respone})
     with open("/content/user_interact_result.json", "w") as outfile:
         outfile.write(json_object)

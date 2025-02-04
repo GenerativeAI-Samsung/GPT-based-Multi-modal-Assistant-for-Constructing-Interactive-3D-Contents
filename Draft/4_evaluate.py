@@ -1,7 +1,7 @@
 import json
 import os
 
-from LanguageModel import ScenePlanningModel, TestScenePlanningModel
+from Draft.LanguageModel import ScenePlanningModel, TestScenePlanningModel
 
 def evaluate(scene_plan_model, text, index, dataType, modelType):
     print(f"Start index {index}")

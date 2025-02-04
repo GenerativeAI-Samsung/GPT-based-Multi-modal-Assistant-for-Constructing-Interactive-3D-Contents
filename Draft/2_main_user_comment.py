@@ -1,5 +1,5 @@
 import json
-from LanguageModel import ScenePlanningModel, TestScenePlanningModel
+from Draft.LanguageModel import ScenePlanningModel, TestScenePlanningModel
 
 if __name__ == '__main__':  
 
