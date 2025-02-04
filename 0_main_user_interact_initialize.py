@@ -1,7 +1,10 @@
 from RAG import RAG_module
-from LanguageModel import VisionLangugeModel, UserInteractModel, TestUserInteractModel
+from LanguageModel import VisionLangugeModel, UserInteractModel
 import json
 
+# Input Text: "The scene happens in the garden. I want to use the objects described in the image. There are two such objects, and their initial positions are random. The first object runs in an ellipse, while the second one runs straight."
+
+# Image Description: "I want the objects in the scene to be the objects in the image."
 if __name__ == '__main__':
 
     input_text = input("Please provide your command: ")
@@ -20,10 +23,10 @@ if __name__ == '__main__':
                "questions_response": None})
         control = input("Are you done yet? (press 'done' if done, else press 'no'): ")
 
-    MODEL_ID = "LoftQ/Meta-Llama-3-8B-4bit-64rank"
+    MODEL_ID = "LoftQ/Meta-Llama-3-8B-Instruct-4bit-64rank"
 
     print("------------------------------------------------------")
-    print("Initialize LoftQ/Meta-Llama-3-8B-4bit-64rank...")
+    print("Initialize LoftQ/Meta-Llama-3-8B-Instruct-4bit-64rank...")
     user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
     print("Done!")
     print("------------------------------------------------------")
@@ -48,11 +51,33 @@ external_images[{i}]["image_questions"] = [question1, question2, ...]
 Avoid using normal text; format your response strictly as specified above.
 """ 
 
+        prompt += f"""
+        -------------------------------------------------------------------------
+        REMEMBER TO ADVOID USING NORMAL AND STRUCTURE YOUR RESPONE STRICTLY AS SPECIFIC AS:
+        external_images[{i}]["image_questions"] = [question1, question2, ...]
+        ------------------------------------------------------------------------
+        """
+        prompt += "\nRespone:" 
+
         respone = user_interact_model.generate(batch=[prompt])
         while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
             respone = user_interact_model.generate(batch=[prompt])
+
+        # Crop Response
+        cropped_respone_batch = []
+        for res in respone:
+            temp1 = res.split('\nRespone:', 1)[1]
+            if (f'external_images[{i}]["image_questions"] = [' in temp1):
+                temp2 = temp1.split(f'external_images[{i}]["image_questions"] = [')[1]
+                temp3 = temp2.split(']')[0]
+                temp = f'external_images[{i}][\'image_questions\'] = [' + temp3 + ']'
+                print(f"respone: {temp}")
+                cropped_respone_batch.append(temp)
+            else:
+                cropped_respone_batch.append(f'external_images[{i}]["image_questions"] = []')
+                print(f'external_images[{i}]["image_questions"] = []')   
             
-        question_asked.append({"index": i, "prompt": prompt, "respone": respone[0]})
+        question_asked.append({"index": i, "prompt": prompt, "respone": cropped_respone_batch[0]})
     print("Done!")
     print("------------------------------------------------------")
 

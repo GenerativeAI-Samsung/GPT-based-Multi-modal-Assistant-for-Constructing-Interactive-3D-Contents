@@ -47,22 +47,60 @@ class VisionLangugeModel(nn.Module):
 
 class UserInteractModel(nn.Module):
     def __init__(self, MODEL_ID):
+        super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID,
                                                        model_max_length=1536)
+        self.tokenizer.pad_token = self.tokenizer.pad_token
+        
         self.model = AutoModelForCausalLM.from_pretrained(MODEL_ID)
+        
+        self.smart_tokenizer_and_embedding()
     
+    def add_special_tokens(self):
+        default_pad_token = "[PAD]"
+        default_eos_token = "</s>"
+        default_bos_token = "<s>"
+        default_unk_token = "<unk>"
+
+        special_tokens_dict = dict()
+        if self.tokenizer.pad_token is None:
+            special_tokens_dict["pad_token"] = default_pad_token
+        if self.tokenizer.eos_token is None:
+            special_tokens_dict["eos_token"] = default_eos_token
+        if self.tokenizer.bos_token is None:
+            special_tokens_dict["bos_token"] = default_bos_token
+        if self.tokenizer.unk_token is None:
+            special_tokens_dict["unk_token"] = default_unk_token
+        
+        if special_tokens_dict:
+            num_added_tokens = self.tokenizer.add_special_tokens(special_tokens_dict)
+            return num_added_tokens
+        return 0 
+    
+    def smart_tokenizer_and_embedding(self):
+        num_new_tokens = self.add_special_tokens()
+
+        if num_new_tokens > 0:
+            self.model.resize_token_embeddings(len(self.tokenizer))
+
+            input_embeddings = self.model.get_input_embeddings().weight.data
+            output_embeddings = self.model.get_output_embeddings().weight.data
+
+            input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+            output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+
+            input_embeddings[-num_new_tokens:] = input_embeddings_avg
+            output_embeddings[-num_new_tokens:] = output_embeddings_avg
+
+
     def generate(self, batch):
-        # Tokenize the input prompt
         inputs = self.tokenizer(batch, return_tensors="pt", padding=True)
 
-        # Move tensors to the appropriate device (e.g., GPU if available)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
-        # Generating
         outputs = self.model.generate(**inputs, max_length=1024, output_hidden_states=True, return_dict_in_generate=True)
 
-        # Decode the generated tokens back to text
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
         return respone
 
