@@ -209,12 +209,12 @@ Some information might conflict. Howerver, you should always priority what in Us
         while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
             respone = user_interact_model.generate(batch=[promptRequest])
 
-        cropped_respone_batch = []
+        cropped_respone_request_batch = []
         for res in respone:
             temp1 = res.split('\nRespone:', 1)[1]
-            cropped_respone_batch.append(temp)
+            cropped_respone_request_batch.append(temp)
 
-        print(f"Model respone:\n{cropped_respone_batch[0]}")
+        print(f"Model respone:\n{cropped_respone_request_batch[0]}")
 
         input_text = input("Do you have any further modification (press 'done' if no, press 'yes' if yes): ") 
 
