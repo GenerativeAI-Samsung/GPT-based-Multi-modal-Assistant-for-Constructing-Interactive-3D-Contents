@@ -1,6 +1,8 @@
 from RAG import RAG_module
 from LanguageModel import VisionLangugeModel, UserInteractModel
 import json
+import torch
+import gc
 
 # Input Text: "The scene happens in the garden. I want to use the objects described in the image. There are two such objects, and their initial positions are random. The first object runs in an ellipse, while the second one runs straight."
 
@@ -96,6 +98,10 @@ Avoid using normal text; format your response strictly as specified above.
 
     for item in question_asked:
         exec(item["respone"])
+    
+    del user_interact_model
+    gc.collect()
+    torch.cuda.empty_cache()
 
     print("------------------------------------------------------")
     print("Initialize MC-LLaVA-3b...")
@@ -141,6 +147,10 @@ Question: {question}
 
     print(documents_augement)
 
+    del Vision_LM
+    gc.collect()
+    torch.cuda.empty_cache()
+
     print("\n------------------------------------------------------")
     print("Initialize RAG Module") 
     Retrieval_module = RAG_module()
@@ -149,7 +159,14 @@ Question: {question}
     print("------------------------------------------------------")
 
     print("Start User Interact Interface...")
-    
+
+    print("------------------------------------------------------")
+    print("Initialize LoftQ/Meta-Llama-3-8B-Instruct-4bit-64rank...")
+    user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
+    print("Done!")
+    print("------------------------------------------------------")
+
+
     initialPrompt = False
     respone = ""
     while (input_text != 'done'):
@@ -184,6 +201,7 @@ Additionally, there is some supplementary information that will help you respond
         prompt += """
 Some information might conflict. Howerver, you should always priority what in User input
 """
+        prompt += "\nRespone:" 
         print(f"prompt: {prompt}")
         print("responing...")
 
@@ -191,10 +209,15 @@ Some information might conflict. Howerver, you should always priority what in Us
         while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
             respone = user_interact_model.generate(batch=[prompt])
 
-        print(f"Model respone:\n{respone[0]}")
+        cropped_respone_batch = []
+        for res in respone:
+            temp1 = res.split('\nRespone:', 1)[1]
+            cropped_respone_batch.append(temp)
+
+        print(f"Model respone:\n{cropped_respone_batch[0]}")
 
         input_text = input("Do you have any further modification (press 'done' if no, press 'yes' if yes): ") 
 
-    json_object = json.dumps({"user_interact_result": respone})
+    json_object = json.dumps({"user_interact_result": cropped_respone_batch})
     with open("/content/user_interact_result.json", "w") as outfile:
         outfile.write(json_object)
