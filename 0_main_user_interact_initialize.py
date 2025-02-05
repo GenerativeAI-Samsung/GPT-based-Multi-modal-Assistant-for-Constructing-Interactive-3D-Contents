@@ -62,8 +62,6 @@ Avoid using normal text; format your response strictly as specified above.
         prompt += "\nRespone:" 
 
         respone = user_interact_model.generate(batch=[prompt])
-        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
-            respone = user_interact_model.generate(batch=[prompt])
 
         # Crop Response
         cropped_respone_batch = []
@@ -162,7 +160,7 @@ Question: {question}
 
     print("------------------------------------------------------")
     print("Initialize LoftQ/Meta-Llama-3-8B-Instruct-4bit-64rank...")
-    user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
+    new_user_interact_model = UserInteractModel(MODEL_ID=MODEL_ID)
     print("Done!")
     print("------------------------------------------------------")
 
@@ -202,22 +200,20 @@ Additionally, there is some supplementary information that will help you respond
 Some information might conflict. Howerver, you should always priority what in User input
 """
         promptRequest += "\nRespone:" 
-        print(f"prompt: {prompt}")
+        print(f"prompt: {promptRequest}")
         print("responing...")
 
-        respone = user_interact_model.generate(batch=[promptRequest])
-        while ("Unusual activity" in str(respone[0])) or ("Request ended with status code 404" in str(respone[0])):
-            respone = user_interact_model.generate(batch=[promptRequest])
+        respone_request = new_user_interact_model.generate(batch=[promptRequest])
 
         cropped_respone_request_batch = []
-        for res in respone:
+        for res in respone_request:
             temp1 = res.split('\nRespone:', 1)[1]
-            cropped_respone_request_batch.append(temp)
+            cropped_respone_request_batch.append(temp1)
 
         print(f"Model respone:\n{cropped_respone_request_batch[0]}")
 
         input_text = input("Do you have any further modification (press 'done' if no, press 'yes' if yes): ") 
 
-    json_object = json.dumps({"user_interact_result": cropped_respone_batch})
+    json_object = json.dumps({"user_interact_result": cropped_respone_request_batch})
     with open("/content/user_interact_result.json", "w") as outfile:
         outfile.write(json_object)
