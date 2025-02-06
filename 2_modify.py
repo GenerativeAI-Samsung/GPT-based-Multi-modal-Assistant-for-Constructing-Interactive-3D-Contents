@@ -5,22 +5,10 @@ from LanguageModel import ModifyModel
 if __name__ == '__main__':    
     MODEL_ID = "apple/OpenELM-270M"
     TOKENIZER_ID = "meta-llama/Llama-2-7b-hf"
-    adapter_layer1='./content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step1_LoRA_ModifyPart', 
-    adapter_layer2='./content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step2_LoRA_ModifyPart', 
-    adapter_layer3='./content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step3_LoRA_ModifyPart',
-    adapter_layer4='./content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step4_LoRA_ModifyPart',
-    adapter_layer5='./content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step5_LoRA_ModifyPart'
-    classify_request = './content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Classify_Modify_LoRA'
     print("------------------------------------------------------")
     print("Initialize OpenELM-270M...")
     modify_model = ModifyModel(MODEL_ID=MODEL_ID, 
-                                        TOKENIZER_ID=TOKENIZER_ID,
-                                        adapter_layer1=adapter_layer1,
-                                        adapter_layer2=adapter_layer2,
-                                        adapter_layer3=adapter_layer3,
-                                        adapter_layer4=adapter_layer4,
-                                        adapter_layer5=adapter_layer5,
-                                        classify=classify_request)
+                                        TOKENIZER_ID=TOKENIZER_ID)
     print("Done!")
     print("------------------------------------------------------")
     print("------------------------------------------------------")

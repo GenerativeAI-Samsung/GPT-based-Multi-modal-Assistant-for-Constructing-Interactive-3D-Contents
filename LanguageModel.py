@@ -8,6 +8,9 @@ from peft import PeftModel
 
 from PIL import Image
 
+import sys
+sys.path.append('/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents')
+
 class VisionLangugeModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -107,12 +110,7 @@ class UserInteractModel(nn.Module):
 class ScenePlanningModel(nn.Module):
     def __init__(self, 
                  MODEL_ID,
-                 TOKENIZER_ID, 
-                 adapter_layer1=None, 
-                 adapter_layer2=None, 
-                 adapter_layer3=None,
-                 adapter_layer4=None,
-                 adapter_layer5=None):
+                 TOKENIZER_ID):
         super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_ID,
                                                        model_max_length=4096,
@@ -123,30 +121,33 @@ class ScenePlanningModel(nn.Module):
             MODEL_ID, device_map="auto", trust_remote_code=True
         )
         
-        if (adapter_layer1 != None):
-            self.step1_layer = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer1,
-                                                        is_trainable=False)
+        self.adapter_layer1 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step1_LoRA_TextToScene' 
+        self.adapter_layer2 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step2_LoRA_TextToScene' 
+        self.adapter_layer3 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step3_LoRA_TextToScene'
+        self.adapter_layer4 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step4_LoRA_TextToScene'
+        self.adapter_layer5 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step5_LoRA_TextToScene'
 
-        if (adapter_layer2 != None):
-            self.step2_layer = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer2,
-                                                        is_trainable=False)
 
-        if (adapter_layer3 != None):
-            self.step3_layer = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer3,
-                                                        is_trainable=False)
 
-        if (adapter_layer4 != None):
-            self.step4_layer = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer4,
-                                                        is_trainable=False)
+        self.step1_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer1,
+                                                    is_trainable=False)
 
-        if (adapter_layer5 != None):
-            self.step5_layer = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer5,
-                                                        is_trainable=False)
+        self.step2_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer2,
+                                                    is_trainable=False)
+
+        self.step3_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer3,
+                                                    is_trainable=False)
+
+        self.step4_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer4,
+                                                    is_trainable=False)
+
+        self.step5_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer5,
+                                                    is_trainable=False)
 
     def step1_generate(self, request):
         prompt = request
@@ -216,13 +217,7 @@ class ScenePlanningModel(nn.Module):
 class ModifyModel(nn.Module):
     def __init__(self, 
                  MODEL_ID,
-                 TOKENIZER_ID, 
-                 adapter_layer1=None, 
-                 adapter_layer2=None, 
-                 adapter_layer3=None,
-                 adapter_layer4=None,
-                 adapter_layer5=None,
-                 classify=None):
+                 TOKENIZER_ID):
         super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_ID,
                                                        model_max_length=4096,
@@ -232,36 +227,36 @@ class ModifyModel(nn.Module):
         self.model = AutoModelForCausalLM.from_pretrained(
             MODEL_ID, device_map="auto", trust_remote_code=True
         )
+        self.adapter_layer1 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step1_LoRA_TextToScene' 
+        self.adapter_layer2 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step2_LoRA_TextToScene' 
+        self.adapter_layer3 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step3_LoRA_TextToScene'
+        self.adapter_layer4 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step4_LoRA_TextToScene'
+        self.adapter_layer5 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step5_LoRA_TextToScene'
+        self.classify = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Classify_Modify_LoRA'
+
+        self.step1_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer1,
+                                                    is_trainable=False)
+
+        self.step2_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer2,
+                                                    is_trainable=False)
+
+        self.step3_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer3,
+                                                    is_trainable=False)
+
+        self.step4_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer4,
+                                                    is_trainable=False)
+
+        self.step5_layer = PeftModel.from_pretrained(self.model,
+                                                    self.adapter_layer5,
+                                                    is_trainable=False)
         
-        if (adapter_layer1 != None):
-            self.step1_layer = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer1,
-                                                        is_trainable=False)
-
-        if (adapter_layer2 != None):
-            self.step2_layer = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer2,
-                                                        is_trainable=False)
-
-        if (adapter_layer3 != None):
-            self.step3_layer = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer3,
-                                                        is_trainable=False)
-
-        if (adapter_layer4 != None):
-            self.adapter_layer4 = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer4,
-                                                        is_trainable=False)
-
-        if (adapter_layer5 != None):
-            self.adapter_layer5 = PeftModel.from_pretrained(self.base_model,
-                                                        adapter_layer5,
-                                                        is_trainable=False)
-        
-        if (classify != None):
-            self.classify_layer = PeftModel.from_pretrained(self.base_model,
-                                                        classify,
-                                                        is_trainable=False)
+        self.classify_layer = PeftModel.from_pretrained(self.model,
+                                                    self.classify,
+                                                    is_trainable=False)
     
     def classify_generate(self, 
                           original_prompt,
