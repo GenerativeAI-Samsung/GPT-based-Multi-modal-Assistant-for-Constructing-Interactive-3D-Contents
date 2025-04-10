@@ -6,6 +6,10 @@ from transformers import AutoProcessor
 from transformers import TextStreamer
 from peft import PeftModel
 
+import random
+import asyncio
+import g4f
+
 from PIL import Image
 
 import sys
@@ -325,4 +329,27 @@ class ModifyModel(nn.Module):
 
         return generated_text
 
-
+async def deepseek_generate(prompt):
+    async def process_api_request(request, index):
+        tries = 0
+        while (True):
+            try:
+                await asyncio.sleep(random.randint(5, 10))
+                print(f"Started API request of index: {index}.")
+                response = await g4f.ChatCompletion.create_async(
+                    model="deepseek-v3",
+                    messages=[{"role": "user", "content": request}],
+                )
+                exec(response)
+                print(f"Completed API request of index: {index}")
+                return response
+            except Exception as e:
+                print(f"Request of index {index} - try: {tries} - Error: {str(e)}")
+                if (tries == 3):
+                  return [None]
+                tries += 1
+                await asyncio.sleep(5)
+    tasks = []
+    for index, request in enumerate(prompt):
+        tasks.append(process_api_request(request, index))
+    return await asyncio.gather(*tasks, return_exceptions=True)

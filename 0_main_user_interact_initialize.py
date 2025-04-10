@@ -173,7 +173,7 @@ Question: {question}
         combine_item = ''.join((item + "\n") for item in output_RAG)
         
         promptRequest = f"""
-Describe a 3D scene in a single, continuous paragraph that . The description must include:
+Based on user request, describe a 3D scene in a single, continuous paragraph. The description must include:
     1.Location: Where the scene takes place.
     2.Initial Placement of Objects: The starting position of all necessary objects in the scene.
     3.Object Movements: Movements taken from the following list, ensuring each movement includes the required parameters:
@@ -186,9 +186,13 @@ Describe a 3D scene in a single, continuous paragraph that . The description mus
         7. Quadratic Bézier Curve: Parameters include three points (P0, P1, P2).
         8. Cubic Bézier Curve: Parameters include four points (P0, P1, P2, P3).
     4. Frame Range: The starting and ending frame for each object's motion.
-Ensure the description flows naturally and avoids numbered sections or headers. It must integrate all required details seamlessly. Below is an example of an expected response:
-"The scene unfolds in a playground. A bicycle1 moves along a linear Bézier curve, starting at (3.62, 5.26, 18.24) and transitioning to (20.34, -27.23, 20.94), creating a simple path between frame 150 and frame 181. Meanwhile, giraffe1 runs straight along a path from (16.5, 21.26, -15.67) to (-32.88, 20.21, -4.08), quickly and steadily over frames 53 to 82. At the same time, giraffe1 jumps in a winding motion, bursting from (-8.93, -14.32, 25.71), accelerating toward (9.71, -2.13, 27.2) from frames 84 to 167. Horse1 jumps calmly and steadily, remaining poised in place without motion between frames 43 and 130, while giraffe1 stands still following a snaking course, starting at (-27.22, -18.32, 5.72) and darting toward (29.08, -10.61, 11.8) between frames 70 and 98."
-Ensure your response strictly adheres to this format and incorporates all required details."""
+Ensure the description flows naturally and avoids numbered sections or headers. It must integrate all required details seamlessly.
+
+Once the output is determined, it must be presented in the following format:   output=["your answer"]
+Avoid using normal text; format your response strictly as specified above.
+
+User Request: {input['input_syn']}
+"""
 
         if (initialPrompt == False):
             promptRequest += f"""
