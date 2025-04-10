@@ -6,7 +6,7 @@ if __name__ == '__main__':
     # Đọc respone từ user_interact_result.json
     print("------------------------------------------------------")
     print("Loading request...")
-    with open('user_interact_result.json', 'r') as openfile:
+    with open('/content/user_interact_result.json', 'r') as openfile:
         input_text = json.load(openfile)
     input_text = input_text["user_interact_result"][0]
     print("Done!")

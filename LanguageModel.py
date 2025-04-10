@@ -127,8 +127,6 @@ class ScenePlanningModel(nn.Module):
         self.adapter_layer4 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step4_LoRA_TextToScene'
         self.adapter_layer5 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step5_LoRA_TextToScene'
 
-
-
         self.step1_layer = PeftModel.from_pretrained(self.model,
                                                     self.adapter_layer1,
                                                     is_trainable=False)
@@ -150,7 +148,7 @@ class ScenePlanningModel(nn.Module):
                                                     is_trainable=False)
 
     def step1_generate(self, request):
-        prompt = request
+        prompt = request + ' | '
 
         tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
         tokenized_prompt = tokenized_prompt.to('cuda:0')
@@ -159,6 +157,8 @@ class ScenePlanningModel(nn.Module):
 
         output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
         generated_text = output_text[len(prompt):].strip()
+
+        print(f"generated_text: {generated_text}")
 
         return generated_text
 
@@ -324,3 +324,5 @@ class ModifyModel(nn.Module):
         generated_text = output_text[len(prompt):].strip() 
 
         return generated_text
+
+
