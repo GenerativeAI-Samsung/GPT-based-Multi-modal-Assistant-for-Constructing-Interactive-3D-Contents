@@ -2,15 +2,16 @@ from RAG import RAG_module
 from LanguageModel import deepseek_generate, VisionLangugeModel
 import json
 import torch
+import asyncio
 
 def reCheck(obj, path_to_obj):
     json_obj = json.dumps(obj, indent=4)
     with open(path_to_obj, "w") as outfile:
         outfile.write(json_obj)
-    
-    temp_var = None
+
+    temp_var = None    
     while (temp_var != 'Okay!'):
-        temp_var = print(f"Re-checking {path_to_obj} to make sure thing right, then press 'Okay!' to continue:")
+        temp_var = input(f"Re-checking {path_to_obj} to make sure thing right, then press 'Okay!' to continue:")
 
 if __name__ == '__main__':
     request = input("What can I help you? - ")
@@ -27,7 +28,7 @@ if __name__ == '__main__':
                "image_description": temp_img_desc,
                "image_questions": None,
                "questions_response": None})
-    temp_var = input("Do you want to add any image more? - ")
+        temp_var = input("Do you want to add any image more? (press 'That's all!' if no) - ")
 
     doc_aug = [ext_txts]
     print("\nDeepSeekv3 is asking questions about your images...")
@@ -37,17 +38,17 @@ if __name__ == '__main__':
 You are an assistant that helps answer user requests.
 The user provides you with some pictures, and you have to respond to their request based on those pictures.
 However, you do not have direct access to the pictures. The only way to approach them is by asking questions related to the pictures to gather the necessary information.
-Your task is to create questions based on the description about the image to extract the needed information to fulfill the user's request.
+Your task is to create open_ended questions based on the description about the image to extract the needed information to fulfill the user's request.
 
 Description: "{img["image_description"]}"
 
 After getting the answers, format them as follows:
-external_images[{i}]["image_questions"] = [question1, question2, ...]
+ext_imgs[{i}]["image_questions"] = [question1, question2, ...]
 
 Avoid using normal text; format your response strictly as specified above.
 """
-        res = await deepseek_generate(prompt=[prompt])
-        ques.append({"index": i, "prompt": prompt, "respone": res})
+        res = asyncio.run(deepseek_generate(prompt=[prompt]))
+        ques.append({"index": i, "prompt": prompt, "response": res[0]})
     print("DONE!\n")
     
     reCheck(ques, "question_asked.json")
@@ -71,7 +72,7 @@ Description of the image: {img["image_description"]}
 Question: {ques}
 """
             res = vision_lm.process(image_path=img["image_path"],query=prompt)
-            temp_lst.append({"image_index": i, "question": ques, "respone": res})
+            temp_lst.append({"image_index": i, "question": ques, "response": res})
         ans.append(temp_lst)
     reCheck(ans, "answers.json")
     for i, img in enumerate(ext_imgs):
@@ -118,8 +119,13 @@ Additionally, there is some supplementary information that will help you respond
 {retrival_content}
 """
         print("Responsing...")
-        res = await deepseek_generate(prompt=[prompt])
+        res = asyncio.run(deepseek_generate(prompt=[prompt]))
+        env = {}
+        exec(res[0], env)
+        res = env["output"][0] 
+
         print(f"DeepSeek v3's Response: \n{res}")
+        retrival_module.initialize_embedding_database(text=res)
         request = input("Do you have any further modification? (press 'That's all!' if no):")
 
     json_obj = json.dumps({"script": res})

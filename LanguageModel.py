@@ -111,223 +111,97 @@ class UserInteractModel(nn.Module):
         respone = [self.tokenizer.decode(seq, skip_special_tokens=True) for seq in outputs.sequences]
         return respone
 
-class ScenePlanningModel(nn.Module):
-    def __init__(self, 
-                 MODEL_ID,
-                 TOKENIZER_ID):
+class ScriptToScene(nn.Module):
+    def __init__(self):
         super().__init__()
-        self.tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_ID,
-                                                       model_max_length=4096,
-                                                       use_fast=False)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.TOKENIZER_ID = "meta-llama/Llama-2-7b-hf"
+        self.STEP1_ID = "/content/drive/MyDrive/Text_to_scene/Step1_TextToScene"
+        self.STEP2_ID = "/content/drive/MyDrive/Text_to_scene/Step2_TextToScene"
+        self.STEP3_ID = "/content/drive/MyDrive/Text_to_scene/Step3_TextToScene"
+        self.STEP4_ID = "/content/drive/MyDrive/Text_to_scene/Step4_TextToScene"
+        self.STEP5_ID = "/content/drive/MyDrive/Text_to_scene/Step5_TextToScene"
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            MODEL_ID, device_map="auto", trust_remote_code=True
-        )
-        
-        self.adapter_layer1 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step1_LoRA_TextToScene' 
-        self.adapter_layer2 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step2_LoRA_TextToScene' 
-        self.adapter_layer3 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step3_LoRA_TextToScene'
-        self.adapter_layer4 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step4_LoRA_TextToScene'
-        self.adapter_layer5 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step5_LoRA_TextToScene'
+        self.tokenizer = AutoTokenizer.from_pretrained(self.TOKENIZER_ID, use_fast=True)
+        self.step1_textToScene = AutoModelForCausalLM.from_pretrained(self.STEP1_ID, device_map="auto", trust_remote_code=True)
+        self.step2_textToScene = AutoModelForCausalLM.from_pretrained(self.STEP2_ID, device_map="auto", trust_remote_code=True)
+        self.step3_textToScene = AutoModelForCausalLM.from_pretrained(self.STEP3_ID, device_map="auto", trust_remote_code=True)
+        self.step4_textToScene = AutoModelForCausalLM.from_pretrained(self.STEP4_ID, device_map="auto", trust_remote_code=True)
+        self.step5_textToScene = AutoModelForCausalLM.from_pretrained(self.STEP5_ID, device_map="auto", trust_remote_code=True)
 
-        self.step1_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer1,
-                                                    is_trainable=False)
+    def generate(self, model, prompt):
+        tok_prompt = self.tokenizer(prompt, return_tensors='pt')
+        tok_prompt = tok_prompt.to('cuda:0')
 
-        self.step2_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer2,
-                                                    is_trainable=False)
+        output_ids = model.generate(**tok_prompt, max_new_tokens=1024)
 
-        self.step3_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer3,
-                                                    is_trainable=False)
+        output_txt = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        generated_txt = output_txt[len(prompt):].strip()
+        return generated_txt        
 
-        self.step4_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer4,
-                                                    is_trainable=False)
-
-        self.step5_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer5,
-                                                    is_trainable=False)
-
-    def step1_generate(self, request):
+    def step1(self, request):
         prompt = request + ' | '
+        generated_txt = self.generate(prompt, self.step1_textToScene)
+        return generated_txt
 
-        tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
-        tokenized_prompt = tokenized_prompt.to('cuda:0')
-
-        output_ids = self.step1_layer.generate(**tokenized_prompt, max_new_tokens=1024)
-
-        output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        generated_text = output_text[len(prompt):].strip()
-
-        print(f"generated_text: {generated_text}")
-
-        return generated_text
-
-    def step2_generate(self, request, objects_list):
-        prompt = request + ' | ' + objects_list + ' | '
-
-        tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
-        tokenized_prompt = tokenized_prompt.to('cuda:0')
-
-        output_ids = self.step2_layer.generate(**tokenized_prompt, max_new_tokens=1024)
-
-        output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        generated_text = output_text[len(prompt):].strip()
-
-        return generated_text
-
-    def step3_generate(self, request, objects_list, init_pos_ori):
-        prompt = request + ' | ' + objects_list + ' | ' + init_pos_ori + ' | '
-
-        tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
-        tokenized_prompt = tokenized_prompt.to('cuda:0')
-
-        output_ids = self.step3_layer.generate(**tokenized_prompt, max_new_tokens=1024)
-
-        output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        generated_text = output_text[len(prompt):].strip()
-
-        return generated_text
-    
-    def step4_generate(self, request):
-        prompt = request
-
-        tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
-        tokenized_prompt = tokenized_prompt.to('cuda:0')
-
-        output_ids = self.step4_layer.generate(**tokenized_prompt, max_new_tokens=1024)
-
-        output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        generated_text = output_text[len(prompt):].strip()
-
-        return generated_text
-
-    def step5_generate(self, request, object_list):
+    def step2(self, request, object_list):
         prompt = request + ' | ' + object_list + ' | '
+        generated_txt = self.generate(prompt, self.step2_textToScene)
+        return generated_txt
 
-        tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
-        tokenized_prompt = tokenized_prompt.to('cuda:0')
+    def step3(self, request, object_list, init_pos):
+        prompt = request + ' | ' + object_list + ' | ' + init_pos + ' | '
+        generated_txt = self.generate(prompt, self.step3_textToScene)
+        return generated_txt
 
-        output_ids = self.step4_layer.generate(**tokenized_prompt, max_new_tokens=1024)
-
-        output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        generated_text = output_text[len(prompt):].strip()
-
-        return generated_text
-
-class ModifyModel(nn.Module):
-    def __init__(self, 
-                 MODEL_ID,
-                 TOKENIZER_ID):
-        super().__init__()
-        self.tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_ID,
-                                                       model_max_length=4096,
-                                                       use_fast=False)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-
-        self.model = AutoModelForCausalLM.from_pretrained(
-            MODEL_ID, device_map="auto", trust_remote_code=True
-        )
-        self.adapter_layer1 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step1_LoRA_TextToScene' 
-        self.adapter_layer2 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step2_LoRA_TextToScene' 
-        self.adapter_layer3 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step3_LoRA_TextToScene'
-        self.adapter_layer4 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step4_LoRA_TextToScene'
-        self.adapter_layer5 = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Step5_LoRA_TextToScene'
-        self.classify = '/content/GPT-based-Multi-modal-Assistant-for-Constructing-Interactive-3D-Contents/Classify_Modify_LoRA'
-
-        self.step1_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer1,
-                                                    is_trainable=False)
-
-        self.step2_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer2,
-                                                    is_trainable=False)
-
-        self.step3_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer3,
-                                                    is_trainable=False)
-
-        self.step4_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer4,
-                                                    is_trainable=False)
-
-        self.step5_layer = PeftModel.from_pretrained(self.model,
-                                                    self.adapter_layer5,
-                                                    is_trainable=False)
-        
-        self.classify_layer = PeftModel.from_pretrained(self.model,
-                                                    self.classify,
-                                                    is_trainable=False)
+    def step4(self, request):
+        prompt = request + ' | ' 
+        generated_txt = self.generate(prompt, self.step4_textToScene)
+        return generated_txt
     
-    def classify_generate(self, 
-                          original_prompt,
-                          modify_prompt):
-        prompt = original_prompt + ' | ' + modify_prompt + ' | ' 
-        
-        tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
+    def step5(self, request, object_evironment_list):
+        prompt = request + ' | ' + object_evironment_list + ' | '
+        generated_txt = self.generate(prompt, self.step5_textToScene)
+        return generated_txt
 
-        tokenized_prompt = tokenized_prompt.to('cuda:0')
+class ModifyPart(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.TOKENIZER_ID = "meta-llama/Llama-2-7b-hf"
+        self.CLASSIFY_ID = "/content/drive/MyDrive/Text_to_scene/ClassifyStep"
+        self.STEP1_ID = "/content/drive/MyDrive/Text_to_scene/Step1_ModifyPart"
+        self.STEP2_ID = "/content/drive/MyDrive/Text_to_scene/Step2_ModifyPart"
+        self.STEP3_ID = "/content/drive/MyDrive/Text_to_scene/Step3_ModifyPart"
 
-        output_ids = self.step1_layer.generate(**tokenized_prompt, max_new_tokens=1024)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.TOKENIZER_ID, use_fast=True)
+        self.classify = AutoModelForCausalLM.from_pretrained(self.CLASSIFY_ID, device_map="auto", trust_remote_code=True)
+        self.step1_modifyPart = AutoModelForCausalLM.from_pretrained(self.STEP1_ID, device_map="auto", trust_remote_code=True)
+        self.step2_modifyPart = AutoModelForCausalLM.from_pretrained(self.STEP2_ID, device_map="auto", trust_remote_code=True)
+        self.step3_modifyPart = AutoModelForCausalLM.from_pretrained(self.STEP3_ID, device_map="auto", trust_remote_code=True)
 
-        output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        
-        generated_text = output_text[len(prompt):].strip()
+    def generate(self, model, prompt):
+        tok_prompt = self.tokenizer(prompt, return_tensors='pt')
+        tok_prompt = tok_prompt.to('cuda:0')
 
-        return int(generated_text)        
+        output_ids = model.generate(**tok_prompt, max_new_tokens=1024)
 
-    def step1_generate(self, 
-                       original_prompt, 
-                       original_object_list,
-                       modify_prompt):
-        prompt = original_prompt + ' | ' + original_object_list + ' | ' + modify_prompt + ' | ' 
+        output_txt = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        generated_txt = output_txt[len(prompt):].strip()
+        return generated_txt        
 
-        tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
+    def step1_modify(self, ori_req, ori_object_list, modify_res):
+        prompt = ori_req + ' | ' + ori_object_list + ' | ' + modify_res + ' | '
+        generated_txt = self.generate(prompt, self.step1_modifyPart)
+        return generated_txt
 
-        tokenized_prompt = tokenized_prompt.to('cuda:0')
+    def step2_modify(self, ori_req, modified_object_list, ori_init_pos, modify_res):
+        prompt = ori_req + ' | ' + modified_object_list + ' | ' + ori_init_pos + ' | ' + modify_res + ' | '
+        generated_txt = self.generate(prompt, self.step2_modifyPart)
+        return generated_txt
 
-        output_ids = self.step1_layer.generate(**tokenized_prompt, max_new_tokens=1024)
-
-        output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        generated_text = output_text[len(prompt):].strip()
-
-        return generated_text
-
-    def step2_generate(self,
-                       original_prompt, 
-                       original_init_pos,
-                       modify_prompt):
-        prompt = original_prompt + ' | ' + original_init_pos + ' | ' + modify_prompt + ' | '
-
-        tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
-        tokenized_prompt = tokenized_prompt.to('cuda:0')
-
-        output_ids = self.step2_layer.generate(**tokenized_prompt, max_new_tokens=1024)
-
-        output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        generated_text = output_text[len(prompt):].strip()  
-
-        return generated_text
-
-    def step3_generate(self,
-                       original_prompt, 
-                       original_movements,
-                       modify_prompt):
-        prompt = original_prompt + ' | ' + original_movements + ' | ' + modify_prompt + ' | '
-
-        tokenized_prompt = self.tokenizer(prompt, return_tensors='pt')
-
-        tokenized_prompt = tokenized_prompt.to('cuda:0')
-
-        output_ids = self.step3_layer.generate(**tokenized_prompt, max_new_tokens=1024)
-
-        output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        generated_text = output_text[len(prompt):].strip() 
-
-        return generated_text
+    def step3_modify(self, ori_req, ori_movs, modify_res):
+        prompt = ori_req + ' | ' + ori_movs + ' | '  + modify_res + ' | '
+        generated_txt = self.generate(prompt, self.step2_modifyPart)
+        return generated_txt
 
 async def deepseek_generate(prompt):
     async def process_api_request(request, index):
@@ -340,7 +214,7 @@ async def deepseek_generate(prompt):
                     model="deepseek-v3",
                     messages=[{"role": "user", "content": request}],
                 )
-                exec(response)
+                print(response)
                 print(f"Completed API request of index: {index}")
                 return response
             except Exception as e:
