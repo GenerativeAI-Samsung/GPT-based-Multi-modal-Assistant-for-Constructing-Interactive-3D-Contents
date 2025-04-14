@@ -24,6 +24,7 @@ if __name__ == '__main__':
     print("Done!\n")
 
     print("Running Step1...")
+    print(script)
     res = scriptToScene.step1(request=script)
     exec(res, env)
     reCheck(env["object_list"], "step1.json")

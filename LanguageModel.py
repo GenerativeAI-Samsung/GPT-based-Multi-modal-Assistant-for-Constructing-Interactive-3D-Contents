@@ -128,7 +128,7 @@ class ScriptToScene(nn.Module):
         self.step4_textToScene = AutoModelForCausalLM.from_pretrained(self.STEP4_ID, device_map="auto", trust_remote_code=True)
         self.step5_textToScene = AutoModelForCausalLM.from_pretrained(self.STEP5_ID, device_map="auto", trust_remote_code=True)
 
-    def generate(self, model, prompt):
+    def generate(self, prompt, model):
         tok_prompt = self.tokenizer(prompt, return_tensors='pt')
         tok_prompt = tok_prompt.to('cuda:0')
 
@@ -144,12 +144,12 @@ class ScriptToScene(nn.Module):
         return generated_txt
 
     def step2(self, request, object_list):
-        prompt = request + ' | ' + object_list + ' | '
+        prompt = request + ' | ' + f"object_list={object_list}" + ' | '
         generated_txt = self.generate(prompt, self.step2_textToScene)
         return generated_txt
 
     def step3(self, request, object_list, init_pos):
-        prompt = request + ' | ' + object_list + ' | ' + init_pos + ' | '
+        prompt = request + ' | ' + f"object_list={object_list}" + ' | ' + f"init_pos={init_pos}" + ' | '
         generated_txt = self.generate(prompt, self.step3_textToScene)
         return generated_txt
 
@@ -159,7 +159,7 @@ class ScriptToScene(nn.Module):
         return generated_txt
     
     def step5(self, request, object_evironment_list):
-        prompt = request + ' | ' + object_evironment_list + ' | '
+        prompt = request + ' | ' + f"object_evironment_list={object_evironment_list}" + ' | '
         generated_txt = self.generate(prompt, self.step5_textToScene)
         return generated_txt
 
@@ -178,7 +178,7 @@ class ModifyPart(nn.Module):
         self.step2_modifyPart = AutoModelForCausalLM.from_pretrained(self.STEP2_ID, device_map="auto", trust_remote_code=True)
         self.step3_modifyPart = AutoModelForCausalLM.from_pretrained(self.STEP3_ID, device_map="auto", trust_remote_code=True)
 
-    def generate(self, model, prompt):
+    def generate(self, prompt, model):
         tok_prompt = self.tokenizer(prompt, return_tensors='pt')
         tok_prompt = tok_prompt.to('cuda:0')
 
@@ -189,18 +189,18 @@ class ModifyPart(nn.Module):
         return generated_txt        
 
     def step1_modify(self, ori_req, ori_object_list, modify_res):
-        prompt = ori_req + ' | ' + ori_object_list + ' | ' + modify_res + ' | '
+        prompt = ori_req + ' | ' + f"object_list={ori_object_list}" + ' | ' + modify_res + ' | '
         generated_txt = self.generate(prompt, self.step1_modifyPart)
         return generated_txt
 
     def step2_modify(self, ori_req, modified_object_list, ori_init_pos, modify_res):
-        prompt = ori_req + ' | ' + modified_object_list + ' | ' + ori_init_pos + ' | ' + modify_res + ' | '
+        prompt = ori_req + ' | ' + f"{modified_object_list}" + ' | ' + f"init_pos{ori_init_pos}" + ' | ' + modify_res + ' | '
         generated_txt = self.generate(prompt, self.step2_modifyPart)
         return generated_txt
 
     def step3_modify(self, ori_req, ori_movs, modify_res):
-        prompt = ori_req + ' | ' + ori_movs + ' | '  + modify_res + ' | '
-        generated_txt = self.generate(prompt, self.step2_modifyPart)
+        prompt = ori_req + ' | ' + f"movements={ori_movs}" + ' | '  + modify_res + ' | '
+        generated_txt = self.generate(prompt, self.step3_modifyPart)
         return generated_txt
 
 async def deepseek_generate(prompt):
