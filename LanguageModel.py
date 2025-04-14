@@ -187,6 +187,11 @@ class ModifyPart(nn.Module):
         output_txt = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
         generated_txt = output_txt[len(prompt):].strip()
         return generated_txt        
+    
+    def classify_generate(self, ori_req, modify_res):
+        prompt = ori_req + ' | ' + modify_res
+        generated_txt = self.generate(prompt, self.classify)
+        return generated_txt        
 
     def step1_modify(self, ori_req, ori_object_list, modify_res):
         prompt = ori_req + ' | ' + f"object_list={ori_object_list}" + ' | ' + modify_res + ' | '

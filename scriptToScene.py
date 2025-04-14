@@ -27,7 +27,7 @@ if __name__ == '__main__':
     print(script)
     res = scriptToScene.step1(request=script)
     exec(res, env)
-    reCheck(env["object_list"], "step1.json")
+    reCheck(env["object_list"], "/content/step1.json")
     print("Done!")
     print("--------------------------------------------------------")
 
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     res = scriptToScene.step2(request=script, 
                               object_list=env["object_list"])
     exec(res, env)
-    reCheck(env["init_pos"], "step2.json")
+    reCheck(env["init_pos"], "/content/step2.json")
     print("Done!\n")
     print("--------------------------------------------------------")
 
@@ -44,14 +44,14 @@ if __name__ == '__main__':
                               object_list=env["object_list"],
                               init_pos=env["init_pos"])
     exec(res, env)
-    reCheck(env["movements"], "step3.json")
+    reCheck(env["movements"], "/content/step3.json")
     print("Done!\n")
     print("--------------------------------------------------------")
 
     print("Running Step4...")
     res = scriptToScene.step4(request=script)
     exec(res, env)
-    reCheck(env["object_evironment_list"], "step4.json")
+    reCheck(env["object_evironment_list"], "/content/step4.json")
     print("Done!\n")
     print("--------------------------------------------------------")
 
@@ -59,6 +59,6 @@ if __name__ == '__main__':
     res = scriptToScene.step5(request=script,
                               object_evironment_list=env["object_evironment_list"])
     exec(res, env)
-    reCheck(env["init_enviroment_pos"], "step5.json")
+    reCheck(env["init_enviroment_pos"], "/content/step5.json")
     print("Done!\n")
     print("--------------------------------------------------------")
